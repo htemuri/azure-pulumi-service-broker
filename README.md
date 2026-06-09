@@ -26,6 +26,7 @@ A self-service API to provision Azure objects using Pulumi instead of Terraform
   - [ ] dockerfiles for each service
   - [ ] maybe a helm chart to deploy the entire stack to k8s
 - [ ] Improvements
-  - [ ] nats authentication
+  - [ ] nats authentication and tls
   - [ ] attaching telemetry to the bundle
   - [ ] different "templates" for how projects are structured? like make project top level into resource groups instead of subscriptions
+  - [ ] rollback feature?
