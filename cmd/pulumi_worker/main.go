@@ -16,14 +16,22 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var logger = log.New(os.Stdout, "[Pulumi Worker]: ", log.Ldate|log.Ltime|log.Lmsgprefix)
+
 func main() {
-	logger := log.New(os.Stdout, "[Pulumi Worker]: ", log.Ldate|log.Ltime|log.Lmsgprefix)
 	natsServer := nats.DefaultURL
 	ctx := context.Background()
 
 	err := godotenv.Load()
 	if err != nil {
 		logger.Fatal("Error loading .env file:", err)
+	}
+
+	globalVars := GlobalVars{
+		TenantId:                       os.Getenv("TENANT_ID"),
+		BillingScope:                   os.Getenv("BILLING_SCOPE"),
+		ClientProjectManagementGroupId: os.Getenv("CLIENT_PROJ_MGMT_GROUP_ID"),
+		Region:                         os.Getenv("REGION"),
 	}
 
 	logger.Println("initializing connection to nats server:", natsServer)
@@ -51,61 +59,50 @@ func main() {
 	}
 
 	if _, err := consumer.Consume(func(msg jetstream.Msg) {
-		msg.Ack()
+		if msg.Subject() == "failed" {
+			return
+		}
+		msg.InProgress()
 		var project template.Project
 		err = proto.Unmarshal(msg.Data(), &project)
 		if err != nil {
 			logger.Printf("failed to unmarshal message from subject '%s' with error: \n%s", msg.Subject(), err)
+			msg.Nak()
 			return
 		}
+		msg.Ack()
 		logger.Printf("received a message from subject '%s' about project with name '%s'\n", msg.Subject(), project.Name)
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err = handleProjectUpdate(DEV, globalVars, &project)
+			if err != nil {
+				logger.Printf("failed to provision dev resources:\n\t%s", err)
+				_, errPub := js.Publish(ctx, "failed", msg.Data())
+				if errPub != nil {
+					logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", errPub)
+				}
+			}
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err = handleProjectUpdate(PRODUCTION, globalVars, &project)
+			if err != nil {
+				logger.Printf("failed to provision production resources:\n\t%s", err)
+				_, errPub := js.Publish(ctx, "failed", msg.Data())
+				if errPub != nil {
+					logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", errPub)
+				}
+			}
+		}()
 
 	}); err != nil {
 		logger.Fatal("failed to consume messages from durable stream with error:", err)
 	}
 
-	// kv, err := js.KeyValue(ctx, "hanta")
-	// if err != nil {
-	// 	logger.Fatal("failed to bind to kv store 'hanta' with error: ", err)
-	// }
-	// watcher, err := kv.Watch(ctx, "name")
-	// defer watcher.Stop()
-	// if err != nil {
-	// 	logger.Fatal("failed to get value for key 'name' with error: ", err)
-	// }
-	// // watcher.Stop()
-	// for {
-	// 	select {
-	// 	case val := <-watcher.Updates():
-	// 		if val == nil {
-	// 			continue
-	// 		}
-	// 		logger.Printf("Key: %s, Operation: %v, Value: %s\n", val.Key(), val.Operation(), string(val.Value()))
-
-	// 	}
-	// }
-	// for val := range watcher.Updates() {
-	// 	logger.Print("value for key 'hanta' is: ", string(val.Value()))
-	// 	// watcher.Stop()
-	// }
-
-	// logger.Println("subscribing to updates to subject:", natsSubject)
-	// if _, err := nc.Subscribe(natsSubject, func(m *nats.Msg) {
-	// 	logger.Printf("received data: %s\n", string(m.Data))
-	// }); err != nil {
-	// 	logger.Fatalf("error receiving message from subject [%s]: %s", natsSubject, err)
-	// }
-
 	// keep waiting for nats messages
 	wg.Wait()
-	// defer watcher.Stop()
-
-	// globalVars := GlobalVars{
-	// 	TenantId:                       os.Getenv("TENANT_ID"),
-	// 	BillingScope:                   os.Getenv("BILLING_SCOPE"),
-	// 	ClientProjectManagementGroupId: os.Getenv("CLIENT_PROJ_MGMT_GROUP_ID"),
-	// 	Region:                         os.Getenv("REGION"),
-	// }
 
 	// projectOptions := template.Project{
 	// 	Name:             "hanta",
@@ -125,51 +122,37 @@ func main() {
 
 }
 
-func handleProjectUpdate() {}
-
-func createUpdateStack(env Environment, globalVars GlobalVars, project *template.Project) error {
+func handleProjectUpdate(env Environment, globalVars GlobalVars, project *template.Project) error {
 
 	ctx := context.Background()
 	stackName := env.String()
 	projectName := fmt.Sprintf("client-project-%s", project.Name)
 
-	s, err := auto.UpsertStackInlineSource(ctx, stackName, projectName, runPulumiJob(DEV, project, globalVars))
+	s, err := auto.UpsertStackInlineSource(ctx, stackName, projectName, runPulumiJob(env, project, globalVars))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create/update stack with error: %s", err)
 	}
-	fmt.Printf("Created/Selected stack %q\n", stackName)
-
+	logger.Printf("created/selected stack %s/%s\n", projectName, s.Name())
+	logger.Println("configuring workspace...")
 	w := s.Workspace()
-
-	fmt.Println("Installing the Azure Native plugin")
 
 	err = w.InstallPlugin(ctx, "azure-native", "v3.19.0")
 	if err != nil {
-		fmt.Printf("Failed to install program plugins: %v\n", err)
-		return err
+		return fmt.Errorf("Failed to install program plugins: %v\n", err)
 	}
-
-	fmt.Println("Successfully installed Azure Native plugin")
 
 	s.SetConfig(ctx, "azure-native:location", auto.ConfigValue{Value: globalVars.Region})
-
-	fmt.Println("Successfully set config")
-	fmt.Println("Starting refresh")
-
 	_, err = s.Refresh(ctx)
 	if err != nil {
-		fmt.Printf("Failed to refresh stack: %v\n", err)
-		return err
+		return fmt.Errorf("Failed to refresh stack: %v\n", err)
 	}
 
-	fmt.Println("Refresh succeeded!")
+	streamer := optup.ProgressStreams(logger.Writer())
 
-	stdoutStreamer := optup.ProgressStreams(os.Stdout)
-
-	_, err = s.Up(ctx, stdoutStreamer)
+	_, err = s.Up(ctx, streamer)
 	if err != nil {
-		fmt.Printf("Failed to update stack: %v\n\n", err)
-		return err
+		return fmt.Errorf("Failed to update stack: %v\n\n", err)
 	}
+	logger.Println("successfully provisioned/updated environment for project ", project.Name)
 	return nil
 }

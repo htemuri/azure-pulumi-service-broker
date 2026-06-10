@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/htemuri/azure-pulumi-service-broker/pkg/template"
@@ -30,6 +31,8 @@ func runPulumiJob(env Environment, project *template.Project, globalVars GlobalV
 		provider, err := pulumiazurenativesdk.NewProvider(ctx, "new_sub_provider", &pulumiazurenativesdk.ProviderArgs{
 			SubscriptionId: sub.Properties.SubscriptionId(),
 			TenantId:       pulumi.String(globalVars.TenantId),
+			ClientId:       pulumi.String(os.Getenv("PULUMI_SP_CLIENT_ID")),
+			ClientSecret:   pulumi.String(os.Getenv("PULUMI_SP_CLIENT_SECRET")),
 		})
 
 		rg, err := resources.NewResourceGroup(ctx, "network", &resources.ResourceGroupArgs{
