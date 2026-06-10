@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+// buf:lint:ignore PACKAGE_DIRECTORY_MATCH
+package project;
+
+option go_package = "pkg/template";
+
+message Project {
+  string name = 1;
+  repeated UserPersonaEntry users = 2;
+  repeated GroupPersonaEntry groups = 3;
+  ServicePrincipalOptions service_principal = 4;
+  StorageAccountOptions storage_account = 5;
+  KeyVaultOptions key_vault_options = 6;
+  DataFactoryOptions data_factory_options = 7;
+}
+
+message UserPersonaEntry {
+  RoleType role = 1;
+  repeated User users = 2;
+}
+
+message GroupPersonaEntry {
+  RoleType role = 1;
+  Group group = 2;
+}
+
+message User {
+  string user_principal_name = 1;
+  string object_id = 2;
+}
+
+message Group {
+  string display_name = 1;
+  string object_id = 2;
+}
+
+enum RoleType {
+  ROLE_TYPE_UNSPECIFIED = 0;
+  ROLE_TYPE_ADMIN = 1;
+  ROLE_TYPE_DEVELOPER = 2;
+  ROLE_TYPE_READER = 3;
+}
+
+message StorageAccountOptions {
+  bool enabled = 1;
+}
+message KeyVaultOptions {
+  bool enabled = 1;
+}
+message ServicePrincipalOptions {
+  bool enabled = 1;
+}
+message DataFactoryOptions {
+  bool enabled = 1;
+}

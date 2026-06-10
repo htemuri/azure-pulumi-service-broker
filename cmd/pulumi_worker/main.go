@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/htemuri/azure-pulumi-service-broker/pkg/template"
 	"github.com/joho/godotenv"
@@ -12,6 +13,7 @@ import (
 	"github.com/nats-io/nats.go/jetstream"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
+	"google.golang.org/protobuf/proto"
 )
 
 func main() {
@@ -38,29 +40,50 @@ func main() {
 	}
 	logger.Println("upgraded connection to jetstream")
 
-	// wg := sync.WaitGroup{}
-	// wg.Add(1)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
 
-	kv, err := js.KeyValue(ctx, "hanta")
+	consumer, err := js.CreateOrUpdateConsumer(ctx, "ProjectJobQueue", jetstream.ConsumerConfig{
+		Name: "pulumi_worker", Durable: "pulumi_worker",
+	})
 	if err != nil {
-		logger.Fatal("failed to bind to kv store 'hanta' with error: ", err)
+		logger.Fatal("failed to create/update durable consumer against project job queue stream with error:", err)
 	}
-	watcher, err := kv.Watch(ctx, "name")
-	defer watcher.Stop()
-	if err != nil {
-		logger.Fatal("failed to get value for key 'name' with error: ", err)
-	}
-	// watcher.Stop()
-	for {
-		select {
-		case val := <-watcher.Updates():
-			if val == nil {
-				continue
-			}
-			logger.Printf("Key: %s, Operation: %v, Value: %s\n", val.Key(), val.Operation(), string(val.Value()))
 
+	if _, err := consumer.Consume(func(msg jetstream.Msg) {
+		msg.Ack()
+		var project template.Project
+		err = proto.Unmarshal(msg.Data(), &project)
+		if err != nil {
+			logger.Printf("failed to unmarshal message from subject '%s' with error: \n%s", msg.Subject(), err)
+			return
 		}
+		logger.Printf("received a message from subject '%s' about project with name '%s'\n", msg.Subject(), project.Name)
+
+	}); err != nil {
+		logger.Fatal("failed to consume messages from durable stream with error:", err)
 	}
+
+	// kv, err := js.KeyValue(ctx, "hanta")
+	// if err != nil {
+	// 	logger.Fatal("failed to bind to kv store 'hanta' with error: ", err)
+	// }
+	// watcher, err := kv.Watch(ctx, "name")
+	// defer watcher.Stop()
+	// if err != nil {
+	// 	logger.Fatal("failed to get value for key 'name' with error: ", err)
+	// }
+	// // watcher.Stop()
+	// for {
+	// 	select {
+	// 	case val := <-watcher.Updates():
+	// 		if val == nil {
+	// 			continue
+	// 		}
+	// 		logger.Printf("Key: %s, Operation: %v, Value: %s\n", val.Key(), val.Operation(), string(val.Value()))
+
+	// 	}
+	// }
 	// for val := range watcher.Updates() {
 	// 	logger.Print("value for key 'hanta' is: ", string(val.Value()))
 	// 	// watcher.Stop()
@@ -74,7 +97,7 @@ func main() {
 	// }
 
 	// keep waiting for nats messages
-	// wg.Wait()
+	wg.Wait()
 	// defer watcher.Stop()
 
 	// globalVars := GlobalVars{
@@ -104,7 +127,7 @@ func main() {
 
 func handleProjectUpdate() {}
 
-func createUpdateStack(env Environment, globalVars GlobalVars, project template.Project) error {
+func createUpdateStack(env Environment, globalVars GlobalVars, project *template.Project) error {
 
 	ctx := context.Background()
 	stackName := env.String()

@@ -11,7 +11,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-func runPulumiJob(env Environment, project template.Project, globalVars GlobalVars) pulumi.RunFunc {
+func runPulumiJob(env Environment, project *template.Project, globalVars GlobalVars) pulumi.RunFunc {
 	return func(ctx *pulumi.Context) error {
 		sub, err := subscription.NewAlias(ctx, env.String(), &subscription.AliasArgs{
 			Properties: subscription.PutAliasRequestPropertiesArgs{
