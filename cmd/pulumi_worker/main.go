@@ -27,11 +27,14 @@ func main() {
 		logger.Fatal("Error loading .env file:", err)
 	}
 
-	globalVars := GlobalVars{
+	globalVars := Config{
+		PulumiClientId:                 os.Getenv("PULUMI_SP_CLIENT_ID"),
+		PulumiClientSecret:             os.Getenv("PULUMI_SP_CLIENT_SECRET"),
 		TenantId:                       os.Getenv("TENANT_ID"),
 		BillingScope:                   os.Getenv("BILLING_SCOPE"),
 		ClientProjectManagementGroupId: os.Getenv("CLIENT_PROJ_MGMT_GROUP_ID"),
 		Region:                         os.Getenv("REGION"),
+		ClientDevVnetIpAllocId:         os.Getenv("CLIENT_DEV_IPAM_RESOURCE_ID"),
 	}
 
 	logger.Println("initializing connection to nats server:", natsServer)
@@ -84,18 +87,18 @@ func main() {
 				}
 			}
 		}()
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			err = handleProjectUpdate(PRODUCTION, globalVars, &project)
-			if err != nil {
-				logger.Printf("failed to provision production resources:\n\t%s", err)
-				_, errPub := js.Publish(ctx, "failed", msg.Data())
-				if errPub != nil {
-					logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", errPub)
-				}
-			}
-		}()
+		// wg.Add(1)
+		// go func() {
+		// 	defer wg.Done()
+		// 	err = handleProjectUpdate(PRODUCTION, globalVars, &project)
+		// 	if err != nil {
+		// 		logger.Printf("failed to provision production resources:\n\t%s", err)
+		// 		_, errPub := js.Publish(ctx, "failed", msg.Data())
+		// 		if errPub != nil {
+		// 			logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", errPub)
+		// 		}
+		// 	}
+		// }()
 
 	}); err != nil {
 		logger.Fatal("failed to consume messages from durable stream with error:", err)
@@ -104,31 +107,15 @@ func main() {
 	// keep waiting for nats messages
 	wg.Wait()
 
-	// projectOptions := template.Project{
-	// 	Name:             "hanta",
-	// 	Users:            map[template.Role][]template.User{},
-	// 	Groups:           map[template.Role]template.Group{},
-	// 	ServicePrincipal: template.ServicePrincipalOptions{},
-	// 	StorageAccount:   template.StorageAccountOptions{},
-	// 	KeyVault:         template.KeyVaultOptions{},
-	// 	DataFactory:      template.DataFactoryOptions{},
-	// }
-
-	// err = createUpdateStack(DEV, globalVars, projectOptions)
-	// if err != nil {
-	// 	log.Print(err)
-	// 	os.Exit(1)
-	// }
-
 }
 
-func handleProjectUpdate(env Environment, globalVars GlobalVars, project *template.Project) error {
+func handleProjectUpdate(env Environment, config Config, project *template.Project) error {
 
 	ctx := context.Background()
 	stackName := env.String()
 	projectName := fmt.Sprintf("client-project-%s", project.Name)
 
-	s, err := auto.UpsertStackInlineSource(ctx, stackName, projectName, runPulumiJob(env, project, globalVars))
+	s, err := auto.UpsertStackInlineSource(ctx, stackName, projectName, runPulumiJob(env, project, config))
 	if err != nil {
 		return fmt.Errorf("failed to create/update stack with error: %s", err)
 	}
@@ -141,7 +128,14 @@ func handleProjectUpdate(env Environment, globalVars GlobalVars, project *templa
 		return fmt.Errorf("Failed to install program plugins: %v\n", err)
 	}
 
-	s.SetConfig(ctx, "azure-native:location", auto.ConfigValue{Value: globalVars.Region})
+	s.SetConfig(ctx, "azure-native:location", auto.ConfigValue{Value: config.Region})
+
+	// resource autonaming config
+	s.SetConfig(ctx, "pulumi:autonaming.providers.azure-native.resources.azure-native:resources:ResourceGroup", auto.ConfigValue{Value: "${name}"})          // resource group
+	s.SetConfig(ctx, "pulumi:autonaming.providers.azure-native.resources.azure-native:network:VirtualNetwork", auto.ConfigValue{Value: "${name}-${num(3)}"}) // vnet
+	s.SetConfig(ctx, "pulumi:autonaming.providers.azure-native.resources.azure-native:storage:StorageAccount", auto.ConfigValue{Value: "${name}${num(3)}"})  // storageAccount
+	s.SetConfig(ctx, "pulumi:autonaming.providers.azure-native.resources.azure-native:keyvault:Vault", auto.ConfigValue{Value: "${name}-${num(3)}"})         // key vault
+
 	_, err = s.Refresh(ctx)
 	if err != nil {
 		return fmt.Errorf("Failed to refresh stack: %v\n", err)

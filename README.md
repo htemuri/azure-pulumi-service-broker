@@ -21,7 +21,7 @@ A self-service API to provision Azure objects using Pulumi instead of Terraform
   - [ ] worker queue
 - [ ] Broker API
   - [ ] start with rest endpoints
-  - [ ] nats publish handlers
+  - [x] nats publish handlers
 - [ ] Packaging it all
   - [ ] dockerfiles for each service
   - [ ] maybe a helm chart to deploy the entire stack to k8s

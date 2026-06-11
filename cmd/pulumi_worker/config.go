@@ -20,9 +20,15 @@ func (ee Environment) String() string {
 	return envName[ee]
 }
 
-type GlobalVars struct {
+type Config struct {
+	PulumiClientId     string
+	PulumiClientSecret string
+
 	TenantId                       string
 	BillingScope                   string
 	ClientProjectManagementGroupId string
 	Region                         string
+
+	// Networking stuff
+	ClientDevVnetIpAllocId string
 }
