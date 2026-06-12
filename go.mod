@@ -4,23 +4,21 @@ go 1.26.3
 
 require (
 	github.com/joho/godotenv v1.5.1
-	github.com/pulumi/pulumi-azure-native-sdk v1.104.0
-	github.com/pulumi/pulumi-azure-native-sdk/subscription/v2 v2.92.3
+	github.com/nats-io/nats.go v1.52.0
+	github.com/pulumi/pulumi-azure-native-sdk/keyvault/v3 v3.19.0
+	github.com/pulumi/pulumi-azure-native-sdk/network/v3 v3.19.0
+	github.com/pulumi/pulumi-azure-native-sdk/storage/v3 v3.19.0
+	github.com/pulumi/pulumi-azure-native-sdk/subscription/v3 v3.19.0
+	github.com/pulumi/pulumi-azure-native-sdk/v3 v3.19.0
 	github.com/pulumi/pulumi/sdk/v3 v3.245.0
 )
 
 require (
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/iwdgo/sigintwindows v0.2.2 // indirect
-	github.com/nats-io/nats.go v1.52.0 // indirect
 	github.com/nats-io/nkeys v0.4.15 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/nxadm/tail v1.4.11 // indirect
-	github.com/pulumi/pulumi-azure-native-sdk/keyvault v1.104.0 // indirect
-	github.com/pulumi/pulumi-azure-native-sdk/network v1.104.0 // indirect
-	github.com/pulumi/pulumi-azure-native-sdk/storage v1.104.0 // indirect
-	github.com/pulumi/pulumi-azure-native-sdk/v2 v2.92.3 // indirect
-	github.com/pulumi/pulumi-azure-native-sdk/v3 v3.19.0 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 )
 
@@ -132,7 +130,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20260226221140-a57be14db171 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260226221140-a57be14db171 // indirect
 	google.golang.org/grpc v1.80.0 // indirect
-	google.golang.org/protobuf v1.36.11 // indirect
+	google.golang.org/protobuf v1.36.11
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/frand v1.4.2 // indirect
