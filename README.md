@@ -9,11 +9,11 @@ A self-service API to provision Azure objects using Pulumi instead of Terraform
 - [ ] Pulumi worker 
   - [ ] resource provisioning code
     - [ ] networking 
-    - [ ] storage acct
-    - [ ] akv
+    - [x] storage acct
+    - [x] akv
     - [ ] entra id principals
     - [ ] adf
-    - [ ] auth pulumi with service principal
+    - [x] auth pulumi with service principal
   - [x] nats async subject streaming
   - [ ] nats app logging and io writing pulumi events
 - [ ] nats server
@@ -30,3 +30,5 @@ A self-service API to provision Azure objects using Pulumi instead of Terraform
   - [ ] attaching telemetry to the bundle
   - [ ] different "templates" for how projects are structured? like make project top level into resource groups instead of subscriptions
   - [ ] rollback feature?
+  - [ ] option to export stack to files that can be pushed to a repo that keep it in sync
+    - [ ] option to choose format of export [eg: terraform hcl, pulumi stack, arm, json, yaml?]

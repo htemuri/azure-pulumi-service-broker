@@ -125,7 +125,7 @@ func handleProjectUpdate(env Environment, config Config, project *template.Proje
 
 	err = w.InstallPlugin(ctx, "azure-native", "v3.19.0")
 	if err != nil {
-		return fmt.Errorf("Failed to install program plugins: %v\n", err)
+		return fmt.Errorf("failed to install program plugins: %v\n", err)
 	}
 
 	s.SetConfig(ctx, "azure-native:location", auto.ConfigValue{Value: config.Region})
@@ -138,14 +138,14 @@ func handleProjectUpdate(env Environment, config Config, project *template.Proje
 
 	_, err = s.Refresh(ctx)
 	if err != nil {
-		return fmt.Errorf("Failed to refresh stack: %v\n", err)
+		return fmt.Errorf("failed to refresh stack: %v\n", err)
 	}
 
 	streamer := optup.ProgressStreams(logger.Writer())
 
 	_, err = s.Up(ctx, streamer)
 	if err != nil {
-		return fmt.Errorf("Failed to update stack: %v\n\n", err)
+		return fmt.Errorf("failed to update stack: %v\n\n", err)
 	}
 	logger.Println("successfully provisioned/updated environment for project ", project.Name)
 	return nil

@@ -35,7 +35,7 @@ func runPulumiJob(env Environment, project *template.Project, config Config) pul
 		}
 		// create the next resources in the subscription we just created.
 		// TODO: #1 bug here - azure doesn't recognize the subscription we just created with the credentials cached with `az login`
-		provider, err := pulumiazurenativesdk.NewProvider(ctx, "new_sub_provider", &pulumiazurenativesdk.ProviderArgs{
+		projectProvider, err := pulumiazurenativesdk.NewProvider(ctx, "new_sub_provider", &pulumiazurenativesdk.ProviderArgs{
 			SubscriptionId: sub.Properties.SubscriptionId(),
 			TenantId:       pulumi.String(config.TenantId),
 			ClientId:       pulumi.String(config.PulumiClientId),
@@ -48,7 +48,7 @@ func runPulumiJob(env Environment, project *template.Project, config Config) pul
 		networkRg, err := resources.NewResourceGroup(ctx, "network_rg", &resources.ResourceGroupArgs{
 			ResourceGroupName: pulumi.StringPtr(fmt.Sprintf("rg-%s-network-%s", strings.ToLower(project.Name), env.String())),
 			Location:          pulumi.String(config.Region),
-		}, pulumi.Provider(provider))
+		}, pulumi.Provider(projectProvider))
 		if err != nil {
 			return err
 		}
@@ -59,45 +59,93 @@ func runPulumiJob(env Environment, project *template.Project, config Config) pul
 			Subnets:            network.SubnetTypeArray{network.SubnetTypeArgs{Name: pulumi.String("default"), IpamPoolPrefixAllocations: network.IpamPoolPrefixAllocationArray{network.IpamPoolPrefixAllocationArgs{Id: pulumi.String(config.ClientDevVnetIpAllocId), NumberOfIpAddresses: pulumi.String("32")}}}},
 			AddressSpace:       network.AddressSpaceArgs{AddressPrefixes: make(pulumi.StringArray, 0), IpamPoolPrefixAllocations: network.IpamPoolPrefixAllocationArray{network.IpamPoolPrefixAllocationArgs{Id: pulumi.String(config.ClientDevVnetIpAllocId), NumberOfIpAddresses: pulumi.String("32")}}},
 			Location:           pulumi.String(config.Region),
-		}, pulumi.Provider(provider))
+		}, pulumi.Provider(projectProvider))
 		if err != nil {
 			return err
 		}
+
+		defaultSubnetId := vnet.Subnets.Index(pulumi.Int(0)).Id() // grab first subnet in vnet output - should be the 'default' subnet
 
 		// storage (storage account, azure sql db)
 		storageRg, err := resources.NewResourceGroup(ctx, "storage_rg", &resources.ResourceGroupArgs{
 			ResourceGroupName: pulumi.String(fmt.Sprintf("rg-%s-storage-%s", strings.ToLower(project.Name), env.String())),
 			Location:          pulumi.String(config.Region),
-		}, pulumi.Provider(provider))
+		}, pulumi.Provider(projectProvider))
 		if err != nil {
 			return err
 		}
-		stAccount, err := storage.NewStorageAccount(ctx, "storage_account_data", &storage.StorageAccountArgs{
-			ResourceGroupName:     storageRg.Name,
-			AccountName:           pulumi.String(fmt.Sprintf("st%sdata", strings.ToLower(project.Name))),
-			IsHnsEnabled:          pulumi.Bool(true),
-			AllowBlobPublicAccess: pulumi.Bool(false), // TODO: confirm network setting on this - need private endpoints
-			PublicNetworkAccess:   pulumi.String("disabled"),
-			Kind:                  pulumi.String("StorageV2"),
-			Sku:                   storage.SkuArgs{Name: pulumi.String("Standard_LRS")},
-		}, pulumi.Provider(provider))
-		if err != nil {
-			return err
+
+		if project.StorageAccount.Enabled {
+			stAccount, err := storage.NewStorageAccount(ctx, "storage_account_data", &storage.StorageAccountArgs{
+				ResourceGroupName:     storageRg.Name,
+				AccountName:           pulumi.String(fmt.Sprintf("st%sdata", strings.ToLower(project.Name))),
+				IsHnsEnabled:          pulumi.Bool(true),
+				AllowBlobPublicAccess: pulumi.Bool(false), // TODO: confirm network setting on this - need private endpoints
+				PublicNetworkAccess:   pulumi.String("disabled"),
+				Kind:                  pulumi.String("StorageV2"),
+				Sku:                   storage.SkuArgs{Name: pulumi.String("Standard_LRS")},
+			}, pulumi.Provider(projectProvider))
+			if err != nil {
+				return err
+			}
+
+			// create the private endpoints for the storage account
+			for _, sub := range project.StorageAccount.SubResources {
+				sub := sub.ShortString() // convert the enum to the short form string
+				// TODO: #2 figure out the private dns zone record thing
+				_, err := network.NewPrivateEndpoint(ctx, fmt.Sprintf("storage_account_%s_pe", sub), &network.PrivateEndpointArgs{
+					ResourceGroupName:   storageRg.Name,
+					PrivateEndpointName: pulumi.Sprintf("%s-%s-pe", stAccount.Name, sub),
+					Subnet: network.SubnetTypeArgs{
+						Id: defaultSubnetId,
+					},
+					PrivateLinkServiceConnections: network.PrivateLinkServiceConnectionArray{network.PrivateLinkServiceConnectionArgs{
+						Name:                 pulumi.Sprintf("%s_connection", sub),
+						PrivateLinkServiceId: stAccount.ID(),
+						GroupIds:             pulumi.StringArray{pulumi.String(sub)},
+					}},
+				}, pulumi.Provider(projectProvider))
+				if err != nil {
+					return err
+				}
+			}
+
+			ctx.Export("storageAccountName", stAccount.Name)
 		}
 
 		// security (akv)
 		securityRg, err := resources.NewResourceGroup(ctx, "security_rg", &resources.ResourceGroupArgs{
 			ResourceGroupName: pulumi.String(fmt.Sprintf("rg-%s-security-%s", strings.ToLower(project.Name), env.String())),
 			Location:          pulumi.String(config.Region),
-		}, pulumi.Provider(provider))
+		}, pulumi.Provider(projectProvider))
 		if err != nil {
 			return err
 		}
-		kv, err := keyvault.NewVault(ctx, "keyvault", &keyvault.VaultArgs{
-			ResourceGroupName: securityRg.Name,
-			VaultName:         pulumi.String(fmt.Sprintf("kv-%s-%s", strings.ToLower(project.Name), env.String())),
-			Properties:        keyvault.VaultPropertiesArgs{EnableRbacAuthorization: pulumi.Bool(false), EnableSoftDelete: pulumi.Bool(true), TenantId: pulumi.String(config.TenantId), Sku: keyvault.SkuArgs{Name: keyvault.SkuNameStandard, Family: pulumi.String("A")}, PublicNetworkAccess: pulumi.String("disabled")}, // TODO: network settings
-		}, pulumi.Provider(provider))
+		if project.KeyVaultOptions.Enabled {
+			kv, err := keyvault.NewVault(ctx, "keyvault", &keyvault.VaultArgs{
+				ResourceGroupName: securityRg.Name,
+				VaultName:         pulumi.String(fmt.Sprintf("kv-%s-%s", strings.ToLower(project.Name), env.String())),
+				Properties:        keyvault.VaultPropertiesArgs{EnableRbacAuthorization: pulumi.Bool(false), EnableSoftDelete: pulumi.Bool(true), TenantId: pulumi.String(config.TenantId), Sku: keyvault.SkuArgs{Name: keyvault.SkuNameStandard, Family: pulumi.String("A")}, PublicNetworkAccess: pulumi.String("disabled")},
+			}, pulumi.Provider(projectProvider))
+			if err != nil {
+				return err
+			}
+			// TODO: #2 figure out the private dns zone record thing
+			_, err = network.NewPrivateEndpoint(ctx, "keyvault_pe", &network.PrivateEndpointArgs{
+				ResourceGroupName:   securityRg.Name,
+				PrivateEndpointName: pulumi.Sprintf("%s-pe", kv.Name),
+				Subnet: network.SubnetTypeArgs{
+					Id: defaultSubnetId,
+				},
+				PrivateLinkServiceConnections: network.PrivateLinkServiceConnectionArray{network.PrivateLinkServiceConnectionArgs{
+					Name:                 pulumi.String("vault_connection"),
+					PrivateLinkServiceId: kv.ID(),
+					GroupIds:             pulumi.StringArray{pulumi.String("vault")},
+				}},
+			}, pulumi.Provider(projectProvider))
+
+			ctx.Export("akvName", kv.Name)
+		}
 
 		// analytics (adf, databricks)
 
@@ -105,9 +153,7 @@ func runPulumiJob(env Environment, project *template.Project, config Config) pul
 		ctx.Export("networkRgName", networkRg.Name)
 		ctx.Export("storageRgName", storageRg.Name)
 		ctx.Export("securityRgName", securityRg.Name)
-		ctx.Export("storageAccountName", stAccount.Name)
 		ctx.Export("vnetName", vnet.Name)
-		ctx.Export("akvName", kv.Name)
 		return nil
 	}
 }

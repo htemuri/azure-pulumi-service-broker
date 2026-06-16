@@ -3,3 +3,6 @@
 
 # nats
 nats_data/
+
+# testing
+stackexport.json

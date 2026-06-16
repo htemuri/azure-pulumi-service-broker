@@ -42,8 +42,18 @@ enum RoleType {
   ROLE_TYPE_READER = 3;
 }
 
+enum StorageAccountSubResource {
+  STORAGE_ACCOUNT_SUB_RESOURCE_UNSPECIFIED = 0;
+  STORAGE_ACCOUNT_SUB_RESOURCE_BLOB = 1;
+  STORAGE_ACCOUNT_SUB_RESOURCE_DFS = 2;
+  STORAGE_ACCOUNT_SUB_RESOURCE_QUEUE = 3;
+  STORAGE_ACCOUNT_SUB_RESOURCE_FILE = 4;
+  STORAGE_ACCOUNT_SUB_RESOURCE_WEB = 5;
+}
+
 message StorageAccountOptions {
   bool enabled = 1;
+  repeated StorageAccountSubResource sub_resources = 2;
 }
 message KeyVaultOptions {
   bool enabled = 1;
