@@ -31,4 +31,7 @@ type Config struct {
 
 	// Networking stuff
 	ClientDevVnetIpAllocId string
+
+	// Entra
+	EntraIdAdminObjectIds []string
 }

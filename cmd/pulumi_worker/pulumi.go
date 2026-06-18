@@ -5,24 +5,31 @@ import (
 	"strings"
 
 	"github.com/htemuri/azure-pulumi-service-broker/pkg/template"
+	"github.com/pulumi/pulumi-azure-native-sdk/datafactory/v3"
 	"github.com/pulumi/pulumi-azure-native-sdk/keyvault/v3"
 	"github.com/pulumi/pulumi-azure-native-sdk/network/v3"
 	"github.com/pulumi/pulumi-azure-native-sdk/resources/v3"
 	"github.com/pulumi/pulumi-azure-native-sdk/storage/v3"
 	"github.com/pulumi/pulumi-azure-native-sdk/subscription/v3"
 	pulumiazurenativesdk "github.com/pulumi/pulumi-azure-native-sdk/v3"
+	azad "github.com/pulumi/pulumi-azuread/sdk/v6/go/azuread"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // Hard coding the name of the resource logical names because if you wish to change your resource types' physical
 // naming scheme, pulumi wont see it as a whole new resource. Should update the config of the existing resource
 // unless the name can't be edited in-place
 
-func runPulumiJob(env Environment, project *template.Project, config Config) pulumi.RunFunc {
+func runPulumiResourceJob(env Environment, project *template.Project, config Config) pulumi.RunFunc {
 	return func(ctx *pulumi.Context) error {
+
+		var privateEndpoints []pulumi.Input
+
 		sub, err := subscription.NewAlias(ctx, "subscription", &subscription.AliasArgs{
 			Properties: subscription.PutAliasRequestPropertiesArgs{
-				DisplayName:  pulumi.String(fmt.Sprintf("[%s] Client Project: %s", strings.ToUpper(env.String()), strings.ToUpper(project.Name))),
+				DisplayName:  pulumi.Sprintf("[%s] Client Project: %s", strings.ToUpper(env.String()), strings.ToUpper(project.Name)),
 				BillingScope: pulumi.String(config.BillingScope),
 				Workload:     pulumi.String("Production"),
 				AdditionalProperties: subscription.PutAliasRequestAdditionalPropertiesArgs{
@@ -46,7 +53,7 @@ func runPulumiJob(env Environment, project *template.Project, config Config) pul
 
 		// network settings
 		networkRg, err := resources.NewResourceGroup(ctx, "network_rg", &resources.ResourceGroupArgs{
-			ResourceGroupName: pulumi.StringPtr(fmt.Sprintf("rg-%s-network-%s", strings.ToLower(project.Name), env.String())),
+			ResourceGroupName: pulumi.Sprintf("rg-%s-network-%s", strings.ToLower(project.Name), env.String()),
 			Location:          pulumi.String(config.Region),
 		}, pulumi.Provider(projectProvider))
 		if err != nil {
@@ -55,7 +62,7 @@ func runPulumiJob(env Environment, project *template.Project, config Config) pul
 
 		vnet, err := network.NewVirtualNetwork(ctx, "network_vnet", &network.VirtualNetworkArgs{
 			ResourceGroupName:  networkRg.Name,
-			VirtualNetworkName: pulumi.String(fmt.Sprintf("vnet-%s-%s-%s", strings.ToLower(project.Name), env.String(), strings.ToLower(config.Region))),
+			VirtualNetworkName: pulumi.Sprintf("vnet-%s-%s-%s", strings.ToLower(project.Name), env.String(), strings.ToLower(config.Region)),
 			Subnets:            network.SubnetTypeArray{network.SubnetTypeArgs{Name: pulumi.String("default"), IpamPoolPrefixAllocations: network.IpamPoolPrefixAllocationArray{network.IpamPoolPrefixAllocationArgs{Id: pulumi.String(config.ClientDevVnetIpAllocId), NumberOfIpAddresses: pulumi.String("32")}}}},
 			AddressSpace:       network.AddressSpaceArgs{AddressPrefixes: make(pulumi.StringArray, 0), IpamPoolPrefixAllocations: network.IpamPoolPrefixAllocationArray{network.IpamPoolPrefixAllocationArgs{Id: pulumi.String(config.ClientDevVnetIpAllocId), NumberOfIpAddresses: pulumi.String("32")}}},
 			Location:           pulumi.String(config.Region),
@@ -68,7 +75,7 @@ func runPulumiJob(env Environment, project *template.Project, config Config) pul
 
 		// storage (storage account, azure sql db)
 		storageRg, err := resources.NewResourceGroup(ctx, "storage_rg", &resources.ResourceGroupArgs{
-			ResourceGroupName: pulumi.String(fmt.Sprintf("rg-%s-storage-%s", strings.ToLower(project.Name), env.String())),
+			ResourceGroupName: pulumi.Sprintf("rg-%s-storage-%s", strings.ToLower(project.Name), env.String()),
 			Location:          pulumi.String(config.Region),
 		}, pulumi.Provider(projectProvider))
 		if err != nil {
@@ -78,7 +85,7 @@ func runPulumiJob(env Environment, project *template.Project, config Config) pul
 		if project.StorageAccount.Enabled {
 			stAccount, err := storage.NewStorageAccount(ctx, "storage_account_data", &storage.StorageAccountArgs{
 				ResourceGroupName:     storageRg.Name,
-				AccountName:           pulumi.String(fmt.Sprintf("st%sdata", strings.ToLower(project.Name))),
+				AccountName:           pulumi.Sprintf("st%sdata", strings.ToLower(project.Name)),
 				IsHnsEnabled:          pulumi.Bool(true),
 				AllowBlobPublicAccess: pulumi.Bool(false), // TODO: confirm network setting on this - need private endpoints
 				PublicNetworkAccess:   pulumi.String("disabled"),
@@ -93,7 +100,7 @@ func runPulumiJob(env Environment, project *template.Project, config Config) pul
 			for _, sub := range project.StorageAccount.SubResources {
 				sub := sub.ShortString() // convert the enum to the short form string
 				// TODO: #2 figure out the private dns zone record thing
-				_, err := network.NewPrivateEndpoint(ctx, fmt.Sprintf("storage_account_%s_pe", sub), &network.PrivateEndpointArgs{
+				pe, err := network.NewPrivateEndpoint(ctx, fmt.Sprintf("storage_account_%s_pe", sub), &network.PrivateEndpointArgs{
 					ResourceGroupName:   storageRg.Name,
 					PrivateEndpointName: pulumi.Sprintf("%s-%s-pe", stAccount.Name, sub),
 					Subnet: network.SubnetTypeArgs{
@@ -108,6 +115,13 @@ func runPulumiJob(env Environment, project *template.Project, config Config) pul
 				if err != nil {
 					return err
 				}
+				peExport := pulumi.Map(map[string]pulumi.Input{
+					"Fqdn":        pe.CustomDnsConfigs.Index(pulumi.Int(0)).Fqdn(),
+					"IpAddress":   pe.CustomDnsConfigs.Index(pulumi.Int(0)).IpAddresses().Index(pulumi.Int(0)),
+					"DnsZoneName": pulumi.Sprintf("privatelink.%s.core.windows.net", sub),
+				},
+				)
+				privateEndpoints = append(privateEndpoints, peExport)
 			}
 
 			ctx.Export("storageAccountName", stAccount.Name)
@@ -115,7 +129,7 @@ func runPulumiJob(env Environment, project *template.Project, config Config) pul
 
 		// security (akv)
 		securityRg, err := resources.NewResourceGroup(ctx, "security_rg", &resources.ResourceGroupArgs{
-			ResourceGroupName: pulumi.String(fmt.Sprintf("rg-%s-security-%s", strings.ToLower(project.Name), env.String())),
+			ResourceGroupName: pulumi.Sprintf("rg-%s-security-%s", strings.ToLower(project.Name), env.String()),
 			Location:          pulumi.String(config.Region),
 		}, pulumi.Provider(projectProvider))
 		if err != nil {
@@ -124,14 +138,14 @@ func runPulumiJob(env Environment, project *template.Project, config Config) pul
 		if project.KeyVaultOptions.Enabled {
 			kv, err := keyvault.NewVault(ctx, "keyvault", &keyvault.VaultArgs{
 				ResourceGroupName: securityRg.Name,
-				VaultName:         pulumi.String(fmt.Sprintf("kv-%s-%s", strings.ToLower(project.Name), env.String())),
+				VaultName:         pulumi.Sprintf("kv-%s-%s", strings.ToLower(project.Name), env.String()),
 				Properties:        keyvault.VaultPropertiesArgs{EnableRbacAuthorization: pulumi.Bool(false), EnableSoftDelete: pulumi.Bool(true), TenantId: pulumi.String(config.TenantId), Sku: keyvault.SkuArgs{Name: keyvault.SkuNameStandard, Family: pulumi.String("A")}, PublicNetworkAccess: pulumi.String("disabled")},
 			}, pulumi.Provider(projectProvider))
 			if err != nil {
 				return err
 			}
 			// TODO: #2 figure out the private dns zone record thing
-			_, err = network.NewPrivateEndpoint(ctx, "keyvault_pe", &network.PrivateEndpointArgs{
+			pe, err := network.NewPrivateEndpoint(ctx, "keyvault_pe", &network.PrivateEndpointArgs{
 				ResourceGroupName:   securityRg.Name,
 				PrivateEndpointName: pulumi.Sprintf("%s-pe", kv.Name),
 				Subnet: network.SubnetTypeArgs{
@@ -144,16 +158,89 @@ func runPulumiJob(env Environment, project *template.Project, config Config) pul
 				}},
 			}, pulumi.Provider(projectProvider))
 
+			peExport := pulumi.Map(map[string]pulumi.Input{
+				"Fqdn":        pe.CustomDnsConfigs.Index(pulumi.Int(0)).Fqdn(),
+				"IpAddress":   pe.CustomDnsConfigs.Index(pulumi.Int(0)).IpAddresses().Index(pulumi.Int(0)),
+				"DnsZoneName": pulumi.String("privatelink.vaultcore.azure.net"),
+			})
+			privateEndpoints = append(privateEndpoints, peExport)
+
 			ctx.Export("akvName", kv.Name)
 		}
 
 		// analytics (adf, databricks)
+
+		analyticsRg, err := resources.NewResourceGroup(ctx, "analytics_rg", &resources.ResourceGroupArgs{
+			ResourceGroupName: pulumi.Sprintf("rg-%s-analytics-%s", strings.ToLower(project.Name), env.String()),
+			Location:          pulumi.String(config.Region),
+		}, pulumi.Provider(projectProvider))
+		if err != nil {
+			return err
+		}
+		if project.DataFactoryOptions.Enabled {
+			df, err := datafactory.NewFactory(ctx, "adf", &datafactory.FactoryArgs{
+				ResourceGroupName:   analyticsRg.Name,
+				FactoryName:         pulumi.Sprintf("adf-%s-%s", strings.ToLower(project.Name), env.String()),
+				PublicNetworkAccess: pulumi.String("enabled"), // dont need to restrict access to the adf via pe
+			}, pulumi.Provider(projectProvider))
+			if err != nil {
+				return err
+			}
+			ctx.Export("adfName", df.Name)
+		}
+
+		// TODO: i think I can make the private endpoint object better here - like implement the pulumi.Input interface on my custom type
+		// private endpoint info export
+		var convertedEndpoints []any
+		for _, p := range privateEndpoints {
+			convertedEndpoints = append(convertedEndpoints, p)
+		}
+		ctx.Export("privateEndpoints", pulumi.ToArray(convertedEndpoints))
 
 		ctx.Export("subscriptionId", sub.Properties.SubscriptionId())
 		ctx.Export("networkRgName", networkRg.Name)
 		ctx.Export("storageRgName", storageRg.Name)
 		ctx.Export("securityRgName", securityRg.Name)
 		ctx.Export("vnetName", vnet.Name)
+
+		return nil
+	}
+}
+
+func runPulumiEntraJob(project *template.Project, config Config) pulumi.RunFunc {
+	return func(ctx *pulumi.Context) error {
+		provider, err := azad.NewProvider(ctx, "entra_provider", &azad.ProviderArgs{
+			TenantId:     pulumi.String(config.TenantId),
+			ClientId:     pulumi.String(config.PulumiClientId),
+			ClientSecret: pulumi.String(config.PulumiClientSecret),
+		})
+		if err != nil {
+			return err
+		}
+		// entra objects - eventually I want to build a better go client or pulumi provider for azure graph. the official microsoft graph go sdk sucks and this azuread provider is just a wrapper on a terraform provider
+		for k := range template.RoleType_name {
+			if k == 0 { // skip unspecified role type
+				continue
+			}
+			role := template.RoleType(k).ShortString()
+			users := project.RoleUserList(template.RoleType(k))
+			var user_ids pulumi.StringArray
+			for _, user := range users {
+				user_ids = append(user_ids, pulumi.String(user.ObjectId))
+			}
+			g, err := azad.NewGroup(ctx, fmt.Sprintf("%s_group", role), &azad.GroupArgs{
+				DisplayName:     pulumi.Sprintf("grp_%s_%s", strings.ToLower(project.Name), role),
+				Description:     pulumi.Sprintf("%s persona group for the %s project in the %s environment", cases.Title(language.English).String(role), cases.Title(language.English).String(project.Name)),
+				Owners:          append(user_ids, pulumi.ToStringArray(config.EntraIdAdminObjectIds)...), // allowing role type to own its group (along with entra admins). can change to fit your needs
+				Members:         user_ids,
+				MailEnabled:     pulumi.Bool(false),
+				SecurityEnabled: pulumi.Bool(true),
+			}, pulumi.Provider(provider))
+			if err != nil {
+				return err
+			}
+			ctx.Export(fmt.Sprintf("%sGroupName", role), g.DisplayName)
+		}
 		return nil
 	}
 }

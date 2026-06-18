@@ -35,7 +35,7 @@ func main() {
 		ServicePrincipal:   &template.ServicePrincipalOptions{Enabled: false},
 		StorageAccount:     &template.StorageAccountOptions{Enabled: true, SubResources: []template.StorageAccountSubResource{template.StorageAccountSubResource_STORAGE_ACCOUNT_SUB_RESOURCE_BLOB, template.StorageAccountSubResource_STORAGE_ACCOUNT_SUB_RESOURCE_DFS}},
 		KeyVaultOptions:    &template.KeyVaultOptions{Enabled: true},
-		DataFactoryOptions: &template.DataFactoryOptions{Enabled: false},
+		DataFactoryOptions: &template.DataFactoryOptions{Enabled: true},
 	}
 
 	dataBytes, _ := proto.Marshal(&project) // cant error from a generated protobuf go type

@@ -11,8 +11,8 @@ A self-service API to provision Azure objects using Pulumi instead of Terraform
     - [ ] networking 
     - [x] storage acct
     - [x] akv
-    - [ ] entra id principals
-    - [ ] adf
+    - [x] entra id principals
+    - [x] adf
     - [x] auth pulumi with service principal
   - [x] nats async subject streaming
   - [ ] nats app logging and io writing pulumi events
