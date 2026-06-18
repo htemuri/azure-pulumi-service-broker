@@ -62,11 +62,15 @@ func handleProjectResourceUpdate(env Environment, config Config, project *templa
 
 	s.SetConfig(ctx, "azure-native:location", auto.ConfigValue{Value: config.Region})
 
-	// resource autonaming config
-	s.SetConfig(ctx, "pulumi:autonaming.providers.azure-native.resources.azure-native:resources:ResourceGroup", auto.ConfigValue{Value: "${name}"})          // resource group
-	s.SetConfig(ctx, "pulumi:autonaming.providers.azure-native.resources.azure-native:network:VirtualNetwork", auto.ConfigValue{Value: "${name}-${num(3)}"}) // vnet
-	s.SetConfig(ctx, "pulumi:autonaming.providers.azure-native.resources.azure-native:storage:StorageAccount", auto.ConfigValue{Value: "${name}${num(3)}"})  // storageAccount
-	s.SetConfig(ctx, "pulumi:autonaming.providers.azure-native.resources.azure-native:keyvault:Vault", auto.ConfigValue{Value: "${name}-${num(3)}"})         // key vault
+	for k, v := range autonamingConfig {
+		c := fmt.Sprintf("pulumi:autonaming.providers.azure-native.resources.azure-native:%s.pattern", k)
+		err = s.SetConfigWithOptions(ctx, c, auto.ConfigValue{Value: v}, &auto.ConfigOptions{
+			Path: true,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to set autonaming config: %v\n", err)
+		}
+	}
 
 	_, err = s.Refresh(ctx)
 	if err != nil {
@@ -74,7 +78,7 @@ func handleProjectResourceUpdate(env Environment, config Config, project *templa
 	}
 
 	streamer := optup.ProgressStreams(logger.Writer())
-
+	// streamer := optpreview.ProgressStreams(logger.Writer())
 	_, err = s.Up(ctx, streamer)
 	if err != nil {
 		return fmt.Errorf("failed to update stack: %v\n\n", err)

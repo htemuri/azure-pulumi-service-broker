@@ -18,10 +18,6 @@ import (
 	"golang.org/x/text/language"
 )
 
-// Hard coding the name of the resource logical names because if you wish to change your resource types' physical
-// naming scheme, pulumi wont see it as a whole new resource. Should update the config of the existing resource
-// unless the name can't be edited in-place
-
 func runPulumiResourceJob(env Environment, project *template.Project, config Config) pulumi.RunFunc {
 	return func(ctx *pulumi.Context) error {
 
@@ -43,13 +39,11 @@ func runPulumiResourceJob(env Environment, project *template.Project, config Con
 		// create the next resources in the subscription we just created.
 		// TODO: #1 bug here - azure doesn't recognize the subscription we just created with the credentials cached with `az login`
 		projectProvider, err := pulumiazurenativesdk.NewProvider(ctx, "new_sub_provider", &pulumiazurenativesdk.ProviderArgs{
-			SubscriptionId: sub.Properties.SubscriptionId(),
+			SubscriptionId: pulumi.String("951788a6-f378-4800-a3de-1707a7d166bd"), //sub.Properties.SubscriptionId(),
 			TenantId:       pulumi.String(config.TenantId),
 			ClientId:       pulumi.String(config.PulumiClientId),
 			ClientSecret:   pulumi.String(config.PulumiClientSecret),
 		})
-
-		// logger.Println(fmt.Sprintf("rg-%s-network-%s", strings.ToLower(project.Name), env.String()))
 
 		// network settings
 		networkRg, err := resources.NewResourceGroup(ctx, "network_rg", &resources.ResourceGroupArgs{
@@ -60,12 +54,11 @@ func runPulumiResourceJob(env Environment, project *template.Project, config Con
 			return err
 		}
 
-		vnet, err := network.NewVirtualNetwork(ctx, "network_vnet", &network.VirtualNetworkArgs{
-			ResourceGroupName:  networkRg.Name,
-			VirtualNetworkName: pulumi.Sprintf("vnet-%s-%s-%s", strings.ToLower(project.Name), env.String(), strings.ToLower(config.Region)),
-			Subnets:            network.SubnetTypeArray{network.SubnetTypeArgs{Name: pulumi.String("default"), IpamPoolPrefixAllocations: network.IpamPoolPrefixAllocationArray{network.IpamPoolPrefixAllocationArgs{Id: pulumi.String(config.ClientDevVnetIpAllocId), NumberOfIpAddresses: pulumi.String("32")}}}},
-			AddressSpace:       network.AddressSpaceArgs{AddressPrefixes: make(pulumi.StringArray, 0), IpamPoolPrefixAllocations: network.IpamPoolPrefixAllocationArray{network.IpamPoolPrefixAllocationArgs{Id: pulumi.String(config.ClientDevVnetIpAllocId), NumberOfIpAddresses: pulumi.String("32")}}},
-			Location:           pulumi.String(config.Region),
+		vnet, err := network.NewVirtualNetwork(ctx, fmt.Sprintf("vnet-%s-%s-%s", strings.ToLower(project.Name), env.String(), strings.ToLower(config.Region)), &network.VirtualNetworkArgs{
+			ResourceGroupName: networkRg.Name,
+			Subnets:           network.SubnetTypeArray{network.SubnetTypeArgs{Name: pulumi.String("default"), IpamPoolPrefixAllocations: network.IpamPoolPrefixAllocationArray{network.IpamPoolPrefixAllocationArgs{Id: pulumi.String(config.ClientDevVnetIpAllocId), NumberOfIpAddresses: pulumi.String("32")}}}},
+			AddressSpace:      network.AddressSpaceArgs{AddressPrefixes: make(pulumi.StringArray, 0), IpamPoolPrefixAllocations: network.IpamPoolPrefixAllocationArray{network.IpamPoolPrefixAllocationArgs{Id: pulumi.String(config.ClientDevVnetIpAllocId), NumberOfIpAddresses: pulumi.String("32")}}},
+			Location:          pulumi.String(config.Region),
 		}, pulumi.Provider(projectProvider))
 		if err != nil {
 			return err
@@ -74,18 +67,16 @@ func runPulumiResourceJob(env Environment, project *template.Project, config Con
 		defaultSubnetId := vnet.Subnets.Index(pulumi.Int(0)).Id() // grab first subnet in vnet output - should be the 'default' subnet
 
 		// storage (storage account, azure sql db)
-		storageRg, err := resources.NewResourceGroup(ctx, "storage_rg", &resources.ResourceGroupArgs{
-			ResourceGroupName: pulumi.Sprintf("rg-%s-storage-%s", strings.ToLower(project.Name), env.String()),
-			Location:          pulumi.String(config.Region),
+		storageRg, err := resources.NewResourceGroup(ctx, fmt.Sprintf("rg-%s-storage-%s", strings.ToLower(project.Name), env.String()), &resources.ResourceGroupArgs{
+			Location: pulumi.String(config.Region),
 		}, pulumi.Provider(projectProvider))
 		if err != nil {
 			return err
 		}
 
 		if project.StorageAccount.Enabled {
-			stAccount, err := storage.NewStorageAccount(ctx, "storage_account_data", &storage.StorageAccountArgs{
+			stAccount, err := storage.NewStorageAccount(ctx, fmt.Sprintf("st%sdata", strings.ToLower(project.Name)), &storage.StorageAccountArgs{
 				ResourceGroupName:     storageRg.Name,
-				AccountName:           pulumi.Sprintf("st%sdata", strings.ToLower(project.Name)),
 				IsHnsEnabled:          pulumi.Bool(true),
 				AllowBlobPublicAccess: pulumi.Bool(false), // TODO: confirm network setting on this - need private endpoints
 				PublicNetworkAccess:   pulumi.String("disabled"),
@@ -128,17 +119,15 @@ func runPulumiResourceJob(env Environment, project *template.Project, config Con
 		}
 
 		// security (akv)
-		securityRg, err := resources.NewResourceGroup(ctx, "security_rg", &resources.ResourceGroupArgs{
-			ResourceGroupName: pulumi.Sprintf("rg-%s-security-%s", strings.ToLower(project.Name), env.String()),
-			Location:          pulumi.String(config.Region),
+		securityRg, err := resources.NewResourceGroup(ctx, fmt.Sprintf("rg-%s-security-%s", strings.ToLower(project.Name), env.String()), &resources.ResourceGroupArgs{
+			Location: pulumi.String(config.Region),
 		}, pulumi.Provider(projectProvider))
 		if err != nil {
 			return err
 		}
 		if project.KeyVaultOptions.Enabled {
-			kv, err := keyvault.NewVault(ctx, "keyvault", &keyvault.VaultArgs{
+			kv, err := keyvault.NewVault(ctx, fmt.Sprintf("kv-%s-%s", strings.ToLower(project.Name), env.String()), &keyvault.VaultArgs{
 				ResourceGroupName: securityRg.Name,
-				VaultName:         pulumi.Sprintf("kv-%s-%s", strings.ToLower(project.Name), env.String()),
 				Properties:        keyvault.VaultPropertiesArgs{EnableRbacAuthorization: pulumi.Bool(false), EnableSoftDelete: pulumi.Bool(true), TenantId: pulumi.String(config.TenantId), Sku: keyvault.SkuArgs{Name: keyvault.SkuNameStandard, Family: pulumi.String("A")}, PublicNetworkAccess: pulumi.String("disabled")},
 			}, pulumi.Provider(projectProvider))
 			if err != nil {
@@ -170,17 +159,15 @@ func runPulumiResourceJob(env Environment, project *template.Project, config Con
 
 		// analytics (adf, databricks)
 
-		analyticsRg, err := resources.NewResourceGroup(ctx, "analytics_rg", &resources.ResourceGroupArgs{
-			ResourceGroupName: pulumi.Sprintf("rg-%s-analytics-%s", strings.ToLower(project.Name), env.String()),
-			Location:          pulumi.String(config.Region),
+		analyticsRg, err := resources.NewResourceGroup(ctx, fmt.Sprintf("rg-%s-analytics-%s", strings.ToLower(project.Name), env.String()), &resources.ResourceGroupArgs{
+			Location: pulumi.String(config.Region),
 		}, pulumi.Provider(projectProvider))
 		if err != nil {
 			return err
 		}
 		if project.DataFactoryOptions.Enabled {
-			df, err := datafactory.NewFactory(ctx, "adf", &datafactory.FactoryArgs{
+			df, err := datafactory.NewFactory(ctx, fmt.Sprintf("adf-%s-%s", strings.ToLower(project.Name), env.String()), &datafactory.FactoryArgs{
 				ResourceGroupName:   analyticsRg.Name,
-				FactoryName:         pulumi.Sprintf("adf-%s-%s", strings.ToLower(project.Name), env.String()),
 				PublicNetworkAccess: pulumi.String("enabled"), // dont need to restrict access to the adf via pe
 			}, pulumi.Provider(projectProvider))
 			if err != nil {

@@ -7,8 +7,8 @@ A self-service API to provision Azure objects using Pulumi instead of Terraform
 ## TODO
 
 - [ ] Pulumi worker 
-  - [ ] resource provisioning code
-    - [ ] networking 
+  - [x] resource provisioning code
+    - [x] networking 
     - [x] storage acct
     - [x] akv
     - [x] entra id principals
@@ -32,3 +32,5 @@ A self-service API to provision Azure objects using Pulumi instead of Terraform
   - [ ] rollback feature?
   - [ ] option to export stack to files that can be pushed to a repo that keep it in sync
     - [ ] option to choose format of export [eg: terraform hcl, pulumi stack, arm, json, yaml?]
+  - [ ] separate dns zone creation
+  - [ ] separate entra object and iam access provisioning

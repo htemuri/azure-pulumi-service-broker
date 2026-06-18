@@ -73,38 +73,54 @@ func main() {
 		}
 		msg.Ack()
 		logger.Printf("received a message from subject '%s' about project with name '%s'\n", msg.Subject(), project.Name)
-		err = handleProjectEntraUpdate(globalVars, &project)
-		if err != nil {
-			logger.Printf("failed to update project entra objects:\n\t%s", err)
-			_, errPub := js.Publish(ctx, "failed", msg.Data())
-			if errPub != nil {
-				logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", errPub)
-			}
-		}
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			err = handleProjectResourceUpdate(DEV, globalVars, &project)
-			if err != nil {
-				logger.Printf("failed to provision dev resources:\n\t%s", err)
-				_, errPub := js.Publish(ctx, "failed", msg.Data())
-				if errPub != nil {
-					logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", errPub)
-				}
-			}
-		}()
 		// wg.Add(1)
 		// go func() {
 		// 	defer wg.Done()
-		// 	err = handleProjectUpdate(PRODUCTION, globalVars, &project)
+		// 	err = handleProjectResourceUpdate(TEST, globalVars, &project)
 		// 	if err != nil {
-		// 		logger.Printf("failed to provision production resources:\n\t%s", err)
+		// 		logger.Printf("failed to provision test resources:\n\t%s", err)
 		// 		_, errPub := js.Publish(ctx, "failed", msg.Data())
 		// 		if errPub != nil {
 		// 			logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", errPub)
 		// 		}
 		// 	}
 		// }()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err = handleProjectEntraUpdate(globalVars, &project)
+			if err != nil {
+				logger.Printf("failed to update project entra objects:\n\t%s", err)
+				_, errPub := js.Publish(ctx, "failed", msg.Data())
+				if errPub != nil {
+					logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", errPub)
+				}
+			}
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err = handleProjectResourceUpdate(DEV, globalVars, &project)
+			if err != nil {
+				logger.Printf("failed to provision development resources:\n\t%s", err)
+				_, errPub := js.Publish(ctx, "failed", msg.Data())
+				if errPub != nil {
+					logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", errPub)
+				}
+			}
+		}()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err = handleProjectResourceUpdate(PRODUCTION, globalVars, &project)
+			if err != nil {
+				logger.Printf("failed to provision production resources:\n\t%s", err)
+				_, errPub := js.Publish(ctx, "failed", msg.Data())
+				if errPub != nil {
+					logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", errPub)
+				}
+			}
+		}()
 
 	}); err != nil {
 		logger.Fatal("failed to consume messages from durable stream with error:", err)
