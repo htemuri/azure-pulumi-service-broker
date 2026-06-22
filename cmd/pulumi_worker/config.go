@@ -3,17 +3,19 @@ package main
 type Environment int
 
 const (
-	DEV Environment = iota
-	TEST
-	STAGING
-	PRODUCTION
+	Environment_ENTRA Environment = iota
+	Environment_DEV
+	Environment_TEST
+	Environment_STAGING
+	Environment_PRODUCTION
 )
 
 var envName = map[Environment]string{
-	DEV:        "dev",
-	TEST:       "tst",
-	STAGING:    "stg",
-	PRODUCTION: "prod",
+	Environment_ENTRA:      "entra",
+	Environment_DEV:        "dev",
+	Environment_TEST:       "tst",
+	Environment_STAGING:    "stg",
+	Environment_PRODUCTION: "prod",
 }
 
 func (ee Environment) String() string {

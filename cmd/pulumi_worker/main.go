@@ -21,7 +21,7 @@ func main() {
 
 	err := godotenv.Load()
 	if err != nil {
-		logger.Fatal("Error loading .env file:", err)
+		logger.Fatal("error loading .env file:", err)
 	}
 
 	globalVars := Config{
@@ -71,57 +71,21 @@ func main() {
 			msg.Nak()
 			return
 		}
+		nh := NewNatsHandler(context.Background(), &wg, []Environment{Environment_ENTRA, Environment_DEV}, &project, globalVars)
 		msg.Ack()
 		logger.Printf("received a message from subject '%s' about project with name '%s'\n", msg.Subject(), project.Name)
-		// wg.Add(1)
-		// go func() {
-		// 	defer wg.Done()
-		// 	err = handleProjectResourceUpdate(TEST, globalVars, &project)
-		// 	if err != nil {
-		// 		logger.Printf("failed to provision test resources:\n\t%s", err)
-		// 		_, errPub := js.Publish(ctx, "failed", msg.Data())
-		// 		if errPub != nil {
-		// 			logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", errPub)
-		// 		}
-		// 	}
-		// }()
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			err = handleProjectEntraUpdate(globalVars, &project)
-			if err != nil {
-				logger.Printf("failed to update project entra objects:\n\t%s", err)
-				_, errPub := js.Publish(ctx, "failed", msg.Data())
-				if errPub != nil {
-					logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", errPub)
-				}
-			}
-		}()
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			err = handleProjectResourceUpdate(DEV, globalVars, &project)
-			if err != nil {
-				logger.Printf("failed to provision development resources:\n\t%s", err)
-				_, errPub := js.Publish(ctx, "failed", msg.Data())
-				if errPub != nil {
-					logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", errPub)
-				}
-			}
-		}()
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			err = handleProjectResourceUpdate(PRODUCTION, globalVars, &project)
-			if err != nil {
-				logger.Printf("failed to provision production resources:\n\t%s", err)
-				_, errPub := js.Publish(ctx, "failed", msg.Data())
-				if errPub != nil {
-					logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", errPub)
-				}
-			}
-		}()
 
+		errs := nh.Handle()
+		if len(errs) > 0 {
+			for _, e := range errs {
+				logger.Print(e)
+			}
+			logger.Printf("sending project %s to failed deployment queue\n", project.Name)
+			_, errPub := js.Publish(ctx, "failed", msg.Data())
+			if errPub != nil {
+				logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", errPub)
+			}
+		}
 	}); err != nil {
 		logger.Fatal("failed to consume messages from durable stream with error:", err)
 	}

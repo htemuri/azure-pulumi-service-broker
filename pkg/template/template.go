@@ -58,7 +58,7 @@ func (p *Project) RoleGroupList(roleType RoleType) []*Group {
 	return resultList
 }
 
-// this doesn't work. need to figure out how to implement pulumi.Input properly and pass that to the pulumi run func in the worker service.
+// TODO: this doesn't work. need to figure out how to implement pulumi.Input properly and pass that to the pulumi run func in the worker service.
 type PrivateEndpointPulumiExport struct {
 	Fqdn        pulumi.Input
 	IpAddress   pulumi.Input
