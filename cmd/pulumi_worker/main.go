@@ -24,19 +24,32 @@ func main() {
 		logger.Fatal("error loading .env file:", err)
 	}
 
-	globalVars := Config{
-		PulumiClientId:                 os.Getenv("PULUMI_SP_CLIENT_ID"),
-		PulumiClientSecret:             os.Getenv("PULUMI_SP_CLIENT_SECRET"),
-		TenantId:                       os.Getenv("TENANT_ID"),
-		BillingScope:                   os.Getenv("BILLING_SCOPE"),
-		ClientProjectManagementGroupId: os.Getenv("CLIENT_PROJ_MGMT_GROUP_ID"),
-		Region:                         os.Getenv("REGION"),
-		ClientDevVnetIpAllocId:         os.Getenv("CLIENT_DEV_IPAM_RESOURCE_ID"),
-		EntraIdAdminObjectIds:          []string{"b70d6761-f96e-4c7e-a352-b459099a3c09"}, // can point to a database list of admins
+	// TODO: Make this better - maybe add defaults as a method of the config class
+	config := Config{
+		PulumiClientId:                   os.Getenv("PULUMI_SP_CLIENT_ID"),
+		PulumiClientSecret:               os.Getenv("PULUMI_SP_CLIENT_SECRET"),
+		TenantId:                         os.Getenv("TENANT_ID"),
+		BillingScope:                     os.Getenv("BILLING_SCOPE"),
+		ClientProjectManagementGroupId:   os.Getenv("CLIENT_PROJ_MGMT_GROUP_ID"),
+		Region:                           os.Getenv("REGION"),
+		ClientDevVnetIpAllocId:           os.Getenv("CLIENT_DEV_IPAM_RESOURCE_ID"),
+		EntraIdAdminObjectIds:            []string{"b70d6761-f96e-4c7e-a352-b459099a3c09"}, // can point to a database list of admins
+		ProjectStreamName:                os.Getenv("PROJECT_STREAM_NAME"),
+		PulumiAzureADProviderVersion:     os.Getenv("PULUMI_AZUREAD_PROVIDER_VERSION"),
+		PulumiAzureNativeProviderVersion: os.Getenv("PULUMI_AZURENATIVE_PROVIDER_VERSION"),
+	}
+	if config.ProjectStreamName == "" {
+		config.ProjectStreamName = "ProjectJobQueue"
+	}
+	if config.PulumiAzureADProviderVersion == "" {
+		config.PulumiAzureADProviderVersion = "v6.9.1"
+	}
+	if config.PulumiAzureNativeProviderVersion == "" {
+		config.PulumiAzureNativeProviderVersion = "v3.19.0"
 	}
 
 	logger.Println("initializing connection to nats server:", natsServer)
-	nc, err := nats.Connect(nats.DefaultURL)
+	nc, err := nats.Connect(natsServer)
 	if err != nil {
 		logger.Fatal("failed to connect to nats server:", err)
 	}
@@ -52,11 +65,11 @@ func main() {
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 
-	consumer, err := js.CreateOrUpdateConsumer(ctx, "ProjectJobQueue", jetstream.ConsumerConfig{
+	consumer, err := js.CreateOrUpdateConsumer(ctx, config.ProjectStreamName, jetstream.ConsumerConfig{
 		Name: "pulumi_worker", Durable: "pulumi_worker",
 	})
 	if err != nil {
-		logger.Fatal("failed to create/update durable consumer against project job queue stream with error:", err)
+		logger.Fatalf("failed to create/update durable consumer against %s stream with error: %s\n", config.ProjectStreamName, err)
 	}
 
 	if _, err := consumer.Consume(func(msg jetstream.Msg) {
@@ -71,7 +84,7 @@ func main() {
 			msg.Nak()
 			return
 		}
-		nh := NewNatsHandler(context.Background(), &wg, []Environment{Environment_ENTRA, Environment_DEV}, &project, globalVars)
+		nh := NewNatsHandler(context.Background(), &wg, []Environment{Environment_ENTRA, Environment_DEV}, &project, config)
 		msg.Ack()
 		logger.Printf("received a message from subject '%s' about project with name '%s'\n", msg.Subject(), project.Name)
 

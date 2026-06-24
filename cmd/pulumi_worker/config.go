@@ -23,13 +23,18 @@ func (ee Environment) String() string {
 }
 
 type Config struct {
-	PulumiClientId     string
-	PulumiClientSecret string
+	PulumiClientId                   string
+	PulumiClientSecret               string
+	PulumiAzureADProviderVersion     string
+	PulumiAzureNativeProviderVersion string
 
 	TenantId                       string
 	BillingScope                   string
 	ClientProjectManagementGroupId string
 	Region                         string
+
+	// Nats
+	ProjectStreamName string
 
 	// Networking stuff
 	ClientDevVnetIpAllocId string
