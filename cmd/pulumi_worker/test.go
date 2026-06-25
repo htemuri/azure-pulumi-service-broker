@@ -11,28 +11,44 @@ import (
 
 func repoTest() {
 	repoUrl := "https://github.com/pulumi/templates"
-	projectName := "azure-go"
-	r := auto.GitRepo{
-		URL:         repoUrl,
-		ProjectPath: projectName,
+	// projectName := "azure-go"
+	pulumiProject := "test-remote-repo-2"
+
+	_ = auto.GitRepo{
+		URL: repoUrl,
+		// ProjectPath: projectName,
 		Setup: func(ctx context.Context, workspace auto.Workspace) error {
+			workspace.New(ctx, &auto.NewOptions{
+				TemplateOrURL: "https://github.com/pulumi/templates/tree/master/azure-go",
+				Name:          pulumiProject,
+			})
 			curr, err := workspace.ProjectSettings(ctx)
 			if err != nil {
 				fmt.Println("failed to get project settings with error:", err)
 				return err
 			}
 			curr.Name = "test-remote-repo"
+			// cmd := exec.Command()
 			return workspace.SaveProjectSettings(ctx, curr)
 		},
 	}
 	// w := auto.Repo(r)
 
-	// pulumiProject := "test-remote-repo"
 	ctx := context.Background()
-	stackName := auto.FullyQualifiedStackName("htemuri", projectName, "test")
-	fmt.Println(stackName)
+	w, err := auto.NewLocalWorkspace(ctx)
+	if err != nil {
+		fmt.Println("failed to create new local workspace", err)
+		os.Exit(1)
+	}
+	w.New(ctx, &auto.NewOptions{
+		TemplateOrURL: "https://github.com/pulumi/templates/tree/master/azure-go",
+		Name:          pulumiProject,
+	})
+	stackName := auto.FullyQualifiedStackName("htemuri", pulumiProject, "test")
+	// fmt.Println(stackName)
+	s, err := auto.NewStack(ctx, stackName, w)
 
-	s, err := auto.UpsertStackRemoteSource(ctx, "test", r)
+	// s, err := auto.UpsertStackRemoteSource(ctx, "test", r)
 	if err != nil {
 		fmt.Printf("Failed to create or select stack: %v\n", err)
 		os.Exit(1)
