@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/htemuri/azure-pulumi-service-broker/pkg/template"
+	"github.com/htemuri/azure-pulumi-service-broker/pkg/broker"
 	"github.com/pulumi/pulumi-azure-native-sdk/datafactory/v3"
 	"github.com/pulumi/pulumi-azure-native-sdk/keyvault/v3"
 	"github.com/pulumi/pulumi-azure-native-sdk/network/v3"
@@ -20,7 +20,7 @@ import (
 
 type PulumiJobs struct {
 	env     Environment
-	project *template.Project
+	project *broker.Project
 	config  Config
 }
 
@@ -219,12 +219,12 @@ func (pj *PulumiJobs) EntraJob() pulumi.RunFunc {
 			return err
 		}
 		// entra objects - eventually I want to build a better go client or pulumi provider for azure graph. the official microsoft graph go sdk sucks and this azuread provider is just a wrapper on a terraform provider
-		for k := range template.RoleType_name {
+		for k := range broker.RoleType_name {
 			if k == 0 { // skip unspecified role type
 				continue
 			}
-			role := template.RoleType(k).ShortString()
-			users := pj.project.RoleUserList(template.RoleType(k))
+			role := broker.RoleType(k).ShortString()
+			users := pj.project.RoleUserList(broker.RoleType(k))
 			var user_ids pulumi.StringArray
 			for _, user := range users {
 				user_ids = append(user_ids, pulumi.String(user.ObjectId))

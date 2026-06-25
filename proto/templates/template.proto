@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package templates;
+
+import "templates/base.proto";
+import "templates/custom.proto";
+
+option go_package = "pkg/templates";
+
+message Templates {
+  Base base = 1;
+  repeated Custom custom = 2;
+}

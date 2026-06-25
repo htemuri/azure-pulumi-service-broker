@@ -6,7 +6,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/htemuri/azure-pulumi-service-broker/pkg/template"
+	"github.com/htemuri/azure-pulumi-service-broker/pkg/broker"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
@@ -15,11 +15,11 @@ type NatsHandler struct {
 	ctx     context.Context
 	wg      *sync.WaitGroup
 	envs    []Environment
-	project *template.Project
+	project *broker.Project
 	config  Config
 }
 
-func NewNatsHandler(ctx context.Context, wg *sync.WaitGroup, envs []Environment, project *template.Project, config Config) *NatsHandler {
+func NewNatsHandler(ctx context.Context, wg *sync.WaitGroup, envs []Environment, project *broker.Project, config Config) *NatsHandler {
 	return &NatsHandler{
 		ctx:     ctx,
 		wg:      wg,

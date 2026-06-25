@@ -1,9 +1,8 @@
 syntax = "proto3";
 
-// buf:lint:ignore PACKAGE_DIRECTORY_MATCH
 package project;
 
-option go_package = "pkg/template";
+option go_package = "pkg/broker";
 
 message Project {
   string name = 1;

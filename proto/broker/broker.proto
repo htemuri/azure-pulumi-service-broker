@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package broker;
+
+import "project/project.proto";
+
+option go_package = "pkg/broker";
+
+message CreateProjectRequest {
+  project.Project project = 1;
+}
+
+message CreateProjectResponse {
+  project.Project project = 1;
+}
+
+service BrokerService {
+  rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse);
+}
