@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package project;
+package proto.project;
 
 option go_package = "pkg/broker";
 

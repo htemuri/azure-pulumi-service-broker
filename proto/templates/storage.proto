@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package proto.templates;
+
+import "proto/templates/shared.proto";
+
+option go_package = "pkg/templates";
+
+// stack for storage accounts, sql server, postgres flexible, and other resource types that are storage related ...
+message Storage {
+  DefaultParams default_params = 1;
+}
+
+message StorageAccount {
+  optional bool disabled = 1; // enabled by default
+  ResourceNetworkArgs network_settings = 2; // default public network disabled with no private endpoints
+}
+
+// can add whatever other resources below

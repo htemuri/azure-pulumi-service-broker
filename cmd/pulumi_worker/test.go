@@ -43,13 +43,19 @@ func repoTest() {
 	w.New(ctx, &auto.NewOptions{
 		TemplateOrURL: "https://github.com/pulumi/templates/tree/master/azure-go",
 		Name:          pulumiProject,
+		Stack:         "test",
+		Force:         true,
+		TemplateMode:  true,
+		// GenerateOnly:  true,
+		// TemplateMode: true,
 	})
 	stackName := auto.FullyQualifiedStackName("htemuri", pulumiProject, "test")
 	// fmt.Println(stackName)
-	s, err := auto.NewStack(ctx, stackName, w)
+	s, err := auto.UpsertStack(ctx, stackName, w)
 
 	// s, err := auto.UpsertStackRemoteSource(ctx, "test", r)
 	if err != nil {
+
 		fmt.Printf("Failed to create or select stack: %v\n", err)
 		os.Exit(1)
 	}

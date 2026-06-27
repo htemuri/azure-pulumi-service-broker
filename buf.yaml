@@ -9,5 +9,5 @@ breaking:
   use:
     - FILE
 
-modules:
-  - path: proto
+# modules:
+#   - path: proto

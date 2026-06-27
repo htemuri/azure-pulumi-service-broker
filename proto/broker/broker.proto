@@ -1,17 +1,17 @@
 syntax = "proto3";
 
-package broker;
+package proto.broker;
 
-import "project/project.proto";
+import "proto/project/project.proto";
 
 option go_package = "pkg/broker";
 
 message CreateProjectRequest {
-  project.Project project = 1;
+  proto.project.Project project = 1;
 }
 
 message CreateProjectResponse {
-  project.Project project = 1;
+  proto.project.Project project = 1;
 }
 
 service BrokerService {

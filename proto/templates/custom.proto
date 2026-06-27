@@ -1,14 +1,12 @@
 syntax = "proto3";
 
-package templates;
+package proto.templates;
 
-import "templates/options.proto";
+import "proto/templates/shared.proto";
 
 option go_package = "pkg/templates";
 
+// Custom
 message Custom {
-  bool enabled = 1;
-  string name = 2;
-  repeated TemplateOptions depends_on = 3;
-  string repo_url = 4;
+  DefaultParams default_params = 1;
 }

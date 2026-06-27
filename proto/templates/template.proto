@@ -1,13 +1,13 @@
 syntax = "proto3";
 
-package templates;
+package proto.templates;
 
-import "templates/base.proto";
-import "templates/custom.proto";
+import "proto/templates/base.proto";
+import "proto/templates/custom.proto";
 
 option go_package = "pkg/templates";
 
 message Templates {
-  Base base = 1;
+  templates.Base base = 1;
   repeated Custom custom = 2;
 }

@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package proto.templates;
+
+option go_package = "pkg/templates";
+
+enum TemplateOptions {
+  TEMPLATE_OPTIONS_UNSPECIFIED = 0;
+  TEMPLATE_OPTIONS_BASE = 1;
+}
+
+enum Environment {
+  ENVIRONMENT_UNSPECIFIED = 0;
+  ENVIRONMENT_DEV = 1;
+  ENVIRONMENT_TST = 2;
+  ENVIRONMENT_STG = 3;
+  ENVIRONMENT_PRD = 4;
+}
+
+message DefaultParams {
+  bool enabled = 1;
+  string project_name = 2;
+  string stack_name = 3;
+  Environment environment = 4;
+  repeated TemplateOptions depends_on = 5;
+}
+
+message ResourceNetworkArgs {
+  bool public_network_enabled = 1; // default disabled
+  PrivateEndpointArgs private_endpoint = 2;
+}
+
+message PrivateEndpointArgs {
+  bool enabled = 1; // default disabled
+  optional string subnet_id = 2; // if not specified, then use default subnet id from base network vnet
+  repeated string sub_resources = 3;
+}

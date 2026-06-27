@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package proto.templates;
+
+import "proto/templates/shared.proto";
+
+option go_package = "pkg/templates";
+
+// stack for akvs and other resource types that are security related ...
+message Security {
+  DefaultParams default_params = 1;
+  KeyVaultArgs key_vault = 2;
+}
+
+message KeyVaultArgs {
+  optional bool disabled = 1; // enabled by default
+  ResourceNetworkArgs network_settings = 2;
+}
+
+// can add whatever other resources below
