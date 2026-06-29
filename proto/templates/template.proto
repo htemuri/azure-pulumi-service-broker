@@ -8,6 +8,6 @@ import "proto/templates/custom.proto";
 option go_package = "pkg/templates";
 
 message Templates {
-  templates.Base base = 1;
+  optional templates.Base base = 1;
   repeated Custom custom = 2;
 }

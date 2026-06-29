@@ -8,7 +8,8 @@ import (
 var logger = log.New(os.Stdout, "[Pulumi Worker]: ", log.Ldate|log.Ltime|log.Lmsgprefix)
 
 func main() {
-	repoTest()
+	// repoTest()
+	templateTest()
 	// natsServer := nats.DefaultURL
 	// ctx := context.Background()
 

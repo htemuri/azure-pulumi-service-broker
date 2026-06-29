@@ -37,26 +37,26 @@ func (s RoleType) ShortString() string {
 	}
 }
 
-// might be multiple entries for users and groups with duplicate role types
-func (p *Project) RoleUserList(roleType RoleType) []*User {
-	var resultList []*User
-	for _, v := range p.GetUsers() {
-		if v.Role == roleType {
-			resultList = append(resultList, v.GetUsers()...)
-		}
-	}
-	return resultList
-}
+// // might be multiple entries for users and groups with duplicate role types
+// func (p *Project) RoleUserList(roleType RoleType) []*User {
+// 	var resultList []*User
+// 	for _, v := range p.GetUsers() {
+// 		if v.Role == roleType {
+// 			resultList = append(resultList, v.GetUsers()...)
+// 		}
+// 	}
+// 	return resultList
+// }
 
-func (p *Project) RoleGroupList(roleType RoleType) []*Group {
-	var resultList []*Group
-	for _, v := range p.GetGroups() {
-		if v.Role == roleType {
-			resultList = append(resultList, v.Group)
-		}
-	}
-	return resultList
-}
+// func (p *Project) RoleGroupList(roleType RoleType) []*Group {
+// 	var resultList []*Group
+// 	for _, v := range p.GetGroups() {
+// 		if v.Role == roleType {
+// 			resultList = append(resultList, v.Group)
+// 		}
+// 	}
+// 	return resultList
+// }
 
 // TODO: this doesn't work. need to figure out how to implement pulumi.Input properly and pass that to the pulumi run func in the worker service.
 type PrivateEndpointPulumiExport struct {

@@ -17,12 +17,32 @@ enum Environment {
   ENVIRONMENT_PRD = 4;
 }
 
+enum Region {
+  REGION_UNSPECIFIED = 0;
+  REGION_EASTUS = 1;
+  REGION_EASTUS2 = 2;
+}
+
 message DefaultParams {
   bool enabled = 1;
   string project_name = 2;
   string stack_name = 3;
   Environment environment = 4;
-  repeated TemplateOptions depends_on = 5;
+  Region region = 5; // if unspecified, will default to eastus
+  PulumiProviderCredentialArgs pulumi_provider_credential = 6;
+  repeated ProviderVersion providers = 7;
+  repeated TemplateOptions depends_on = 8;
+}
+
+message PulumiProviderCredentialArgs {
+  string tenant_id = 1;
+  string client_id = 2;
+  string client_secret = 3;
+}
+
+message ProviderVersion {
+  string provider_name = 1;
+  string version = 2;
 }
 
 message ResourceNetworkArgs {

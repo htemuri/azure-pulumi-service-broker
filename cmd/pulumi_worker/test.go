@@ -3,11 +3,96 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 
+	"github.com/htemuri/azure-pulumi-service-broker/pkg/broker"
+	"github.com/htemuri/azure-pulumi-service-broker/pkg/templates"
+	"github.com/joho/godotenv"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 )
+
+func templateTest() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("error loading .env file:", err)
+	}
+	pulumiProject := "test-proj-template"
+	projectName := "test-template"
+	env := templates.Environment_ENVIRONMENT_DEV
+	base, err := templates.NewBaseTemplate(
+		projectName, env, templates.Region_REGION_EASTUS, &templates.SubscriptionArgs{
+			BillingScope:      os.Getenv("BILLING_SCOPE"),
+			ManagementGroupId: os.Getenv("CLIENT_PROJ_MGMT_GROUP_ID"),
+		}, &templates.NetworkArgs{IpamPoolPrefixAllocations: &templates.IpamPoolPrefixAllocation{IpamPoolResourceId: os.Getenv("CLIENT_DEV_IPAM_RESOURCE_ID"), NumberOfIpAddresses: 32}, Subnets: make([]*templates.SubnetArgs, 0)}, &templates.PulumiProviderCredentialArgs{
+			TenantId:     os.Getenv("TENANT_ID"),
+			ClientId:     os.Getenv("PULUMI_SP_CLIENT_ID"),
+			ClientSecret: os.Getenv("PULUMI_SP_CLIENT_SECRET"),
+		})
+	if err != nil {
+		log.Fatal(err)
+	}
+	_ = broker.Project{
+		Name:        projectName,
+		Environment: env,
+		Templates: &templates.Templates{
+			Base: base,
+		},
+	}
+	ctx := context.Background()
+	s, err := auto.UpsertStackInlineSource(ctx, base.DefaultParams.StackName, pulumiProject, base.PulumiRunFunc())
+	if err != nil {
+		log.Fatalf("failed to create/update stack with error: %s", err)
+	}
+	fmt.Printf("created/selected stack %s/%s\n", projectName, s.Name())
+	fmt.Println("configuring workspace...")
+	workspace := s.Workspace()
+	for _, p := range base.DefaultParams.Providers {
+		err := workspace.InstallPlugin(ctx, p.ProviderName, p.Version)
+		if err != nil {
+			log.Fatalf("failed to install program plugins: %v\n", err)
+		}
+	}
+
+	s.SetConfig(ctx, "azure-native:location", auto.ConfigValue{Value: base.DefaultParams.Environment.ShortString()})
+
+	for k, v := range autonamingConfig {
+		c := fmt.Sprintf("pulumi:autonaming.providers.azure-native.resources.azure-native:%s.pattern", k)
+		err = s.SetConfigWithOptions(ctx, c, auto.ConfigValue{Value: v}, &auto.ConfigOptions{
+			Path: true,
+		})
+		if err != nil {
+			log.Fatalf("failed to set autonaming config: %v\n", err)
+		}
+	}
+
+	_, err = s.Refresh(ctx)
+	if err != nil {
+		log.Fatalf("failed to refresh stack: %v\n", err)
+	}
+
+	logLevel := uint(1) // 1 - 11 (least verbose to most verbose)
+
+	debugOpts := debug.LoggingOptions{
+		LogToStdErr:   true,
+		LogLevel:      &logLevel,
+		FlowToPlugins: true,
+		Debug:         true,
+	}
+
+	streamer := optup.ProgressStreams(os.Stdout)
+	_, err = s.Up(ctx, optup.DebugLogging(debugOpts), streamer)
+
+	// streamer := optup.ProgressStreams(handlerLogger.Writer())
+	// _, err = s.Preview(ctx, streamer)
+	if err != nil {
+		log.Fatalf("failed to update stack: %v\n\n", err)
+	}
+	fmt.Printf("successfully updated %s env for project %s", env.ShortString(), pulumiProject)
+}
 
 func repoTest() {
 	repoUrl := "https://github.com/pulumi/templates"

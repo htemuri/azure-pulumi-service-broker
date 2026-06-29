@@ -8,23 +8,27 @@ option go_package = "pkg/templates";
 
 message Base {
   DefaultParams default_params = 1;
-  optional string subscription_id = 2; // if not set, create a subscription using the env and project name in the format of "[{Environment}] Client Project: {ProjectName}"
-  optional string resource_group = 3; // if not set, create a resource group with name "network_rg"
-  NetworkArgs virtual_network = 4;
+  SubscriptionArgs subscription = 2;
+  NetworkArgs virtual_network = 3;
+}
+
+message SubscriptionArgs {
+  optional string subscription_id = 1; // if not set, create a subscription using the env and project name in the format of "[{Environment}] Client Project: {ProjectName}"
+  string billing_scope = 2;
+  string management_group_id = 3;
 }
 
 message NetworkArgs {
-  optional string virtual_network_resource_id = 1; // if not set, create a vnet
-  IpamPoolPrefixAllocation ipam_pool_prefix_allocations = 2;
-  repeated SubnetArgs subnets = 3;
+  IpamPoolPrefixAllocation ipam_pool_prefix_allocations = 1; // required (will error if not set)
+  repeated SubnetArgs subnets = 2;
 }
 
 message SubnetArgs {
   string name = 1;
-  IpamPoolPrefixAllocation ipam_pool_prefix_allocations = 2;
+  int32 number_of_ip_addresses = 2;
 }
 
 message IpamPoolPrefixAllocation {
   string ipam_pool_resource_id = 1;
-  string number_of_ip_addresses = 2;
+  int32 number_of_ip_addresses = 2;
 }
