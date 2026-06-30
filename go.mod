@@ -3,26 +3,22 @@ module github.com/htemuri/azure-pulumi-service-broker
 go 1.26.3
 
 require (
+	github.com/dominikbraun/graph v0.23.0
 	github.com/joho/godotenv v1.5.1
 	github.com/nats-io/nats.go v1.52.0
-	github.com/pulumi/pulumi-azure-native-sdk/datafactory/v3 v3.19.0
-	github.com/pulumi/pulumi-azure-native-sdk/keyvault/v3 v3.19.0
 	github.com/pulumi/pulumi-azure-native-sdk/network/v3 v3.19.0
-	github.com/pulumi/pulumi-azure-native-sdk/storage/v3 v3.19.0
 	github.com/pulumi/pulumi-azure-native-sdk/subscription/v3 v3.19.0
 	github.com/pulumi/pulumi-azure-native-sdk/v3 v3.19.0
-	github.com/pulumi/pulumi-azuread/sdk/v6 v6.9.1
+	github.com/pulumi/pulumi-command/sdk v1.2.1
 	github.com/pulumi/pulumi/sdk/v3 v3.246.0
 )
 
 require (
-	github.com/dominikbraun/graph v0.23.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/iwdgo/sigintwindows v0.2.2 // indirect
 	github.com/nats-io/nkeys v0.4.15 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/nxadm/tail v1.4.11 // indirect
-	github.com/pulumi/pulumi-command/sdk v1.2.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 )
 
@@ -129,7 +125,7 @@ require (
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.45.0 // indirect
 	golang.org/x/term v0.43.0 // indirect
-	golang.org/x/text v0.37.0
+	golang.org/x/text v0.37.0 // indirect
 	golang.org/x/tools v0.44.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260226221140-a57be14db171 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260226221140-a57be14db171 // indirect
