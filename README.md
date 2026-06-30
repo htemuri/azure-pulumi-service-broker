@@ -1,4 +1,6 @@
-> [!NOTE] AI Disclaimer
+> [!NOTE]
+> **AI Disclaimer**
+> 
 > This repo *(almost)* does not contain any AI generated code<sup>1</sup>, ideation, nor documentation as it's a project meant to learn and practice building complex systems.
 >
 > <sup>1</sup>Except for the `unwrapOneof` function [here](https://github.com/htemuri/azure-pulumi-service-broker/blob/d2a7459dee45592ecf3dd7986f28de51d6590c13/pkg/templates/template.go#L43). I couldn't figure out how to properly cast the [`isTemplates_Template` oneOf](https://github.com/htemuri/azure-pulumi-service-broker/blob/d2a7459dee45592ecf3dd7986f28de51d6590c13/pkg/templates/template.pb.go#L32) interface in my generated protobuf code to my custom interface for Template without having to manually write cases for each possible template that implemented `isTemplates_Template`.
