@@ -16,6 +16,7 @@ require (
 )
 
 require (
+	github.com/dominikbraun/graph v0.23.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/iwdgo/sigintwindows v0.2.2 // indirect
 	github.com/nats-io/nkeys v0.4.15 // indirect

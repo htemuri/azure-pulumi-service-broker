@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"github.com/htemuri/azure-pulumi-service-broker/pkg/broker"
+	"github.com/htemuri/azure-pulumi-service-broker/pkg/templates"
+	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
 	"google.golang.org/protobuf/proto"
 )
@@ -12,6 +14,10 @@ import (
 func main() {
 	logger := log.New(os.Stdout, "[Broker API]: ", log.Ldate|log.Ltime|log.Lmsgprefix)
 	natsServer := nats.DefaultURL
+	err := godotenv.Load()
+	if err != nil {
+		logger.Fatal("error loading .env file:", err)
+	}
 
 	logger.Println("initializing connection to nats server: ", natsServer)
 	nc, err := nats.Connect(natsServer)
@@ -28,17 +34,47 @@ func main() {
 	logger.Println("upgraded connection to jetstream")
 
 	// assume I unmarshalled grpc request to project protobuf go type
+	projectName := "covid"
+	env := templates.Environment_ENVIRONMENT_DEV
+	base, err := templates.NewBaseTemplate(
+		projectName, env, templates.Region_REGION_EASTUS, &templates.SubscriptionArgs{
+			BillingScope:      os.Getenv("BILLING_SCOPE"),
+			ManagementGroupId: os.Getenv("CLIENT_PROJ_MGMT_GROUP_ID"),
+		}, &templates.NetworkArgs{IpamPoolPrefixAllocations: &templates.IpamPoolPrefixAllocation{IpamPoolResourceId: os.Getenv("CLIENT_DEV_IPAM_RESOURCE_ID"), NumberOfIpAddresses: 32}, Subnets: make([]*templates.SubnetArgs, 0)}, &templates.PulumiProviderCredentialArgs{
+			TenantId:     os.Getenv("TENANT_ID"),
+			ClientId:     os.Getenv("PULUMI_SP_CLIENT_ID"),
+			ClientSecret: os.Getenv("PULUMI_SP_CLIENT_SECRET"),
+		})
+	if err != nil {
+		log.Fatalf("failed to create template: %s", err)
+	}
 	project := broker.Project{
-		Name:               "hanta",
-		Users:              []*broker.UserPersonaEntry{{Role: broker.RoleType_ROLE_TYPE_ADMIN, Users: []*broker.User{{UserPrincipalName: "productivity.catalyst766_slmail.me#EXT#@productivitycatalyst766slma.onmicrosoft.com", ObjectId: "b70d6761-f96e-4c7e-a352-b459099a3c09"}}}, {Role: broker.RoleType_ROLE_TYPE_DEVELOPER, Users: []*broker.User{{UserPrincipalName: "person1@productivitycatalyst766slma.onmicrosoft.com", ObjectId: "1cf052d6-aeed-4031-8fd3-aa857a3a6b29"}}}, {Role: broker.RoleType_ROLE_TYPE_READER, Users: []*broker.User{{UserPrincipalName: "person2@productivitycatalyst766slma.onmicrosoft.com", ObjectId: "56752270-5c9a-488f-a398-62e7c3108b30"}}}},
-		Groups:             make([]*broker.GroupPersonaEntry, 0),
-		ServicePrincipal:   &broker.ServicePrincipalOptions{Enabled: false},
-		StorageAccount:     &broker.StorageAccountOptions{Enabled: true, SubResources: []broker.StorageAccountSubResource{}},
-		KeyVaultOptions:    &broker.KeyVaultOptions{Enabled: false},
-		DataFactoryOptions: &broker.DataFactoryOptions{Enabled: false},
+		Name:        projectName,
+		Environment: env,
+		Templates:   []*templates.Templates{{Template: &templates.Templates_Base{Base: base}}},
+	}
+	logger.Println("after project init")
+
+	// project := broker.Project{
+	// 	Name:               "hanta",
+	// 	Users:              []*broker.UserPersonaEntry{{Role: broker.RoleType_ROLE_TYPE_ADMIN, Users: []*broker.User{{UserPrincipalName: "productivity.catalyst766_slmail.me#EXT#@productivitycatalyst766slma.onmicrosoft.com", ObjectId: "b70d6761-f96e-4c7e-a352-b459099a3c09"}}}, {Role: broker.RoleType_ROLE_TYPE_DEVELOPER, Users: []*broker.User{{UserPrincipalName: "person1@productivitycatalyst766slma.onmicrosoft.com", ObjectId: "1cf052d6-aeed-4031-8fd3-aa857a3a6b29"}}}, {Role: broker.RoleType_ROLE_TYPE_READER, Users: []*broker.User{{UserPrincipalName: "person2@productivitycatalyst766slma.onmicrosoft.com", ObjectId: "56752270-5c9a-488f-a398-62e7c3108b30"}}}},
+	// 	Groups:             make([]*broker.GroupPersonaEntry, 0),
+	// 	ServicePrincipal:   &broker.ServicePrincipalOptions{Enabled: false},
+	// 	StorageAccount:     &broker.StorageAccountOptions{Enabled: true, SubResources: []broker.StorageAccountSubResource{}},
+	// 	KeyVaultOptions:    &broker.KeyVaultOptions{Enabled: false},
+	// 	DataFactoryOptions: &broker.DataFactoryOptions{Enabled: false},
+	// }
+	_, err = templates.GetEnabledTemplates(project.Templates)
+	if err != nil {
+		logger.Print(err)
+		log.Default().Fatal(err)
 	}
 
-	dataBytes, _ := proto.Marshal(&project) // cant error from a generated protobuf go type
+	dataBytes, err := proto.Marshal(&project) // cant error from a generated protobuf go type
+	if err != nil {
+		logger.Fatalf("failed to marshal project: %s", err)
+	}
+	logger.Println("after marshal")
 
 	// create/update the project stream
 

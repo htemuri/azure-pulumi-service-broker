@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package proto.templates;
 
-option go_package = "pkg/templates";
+option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/templates";
 
 enum TemplateOptions {
   TEMPLATE_OPTIONS_UNSPECIFIED = 0;

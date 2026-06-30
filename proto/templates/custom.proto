@@ -4,7 +4,7 @@ package proto.templates;
 
 import "proto/templates/shared.proto";
 
-option go_package = "pkg/templates";
+option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/templates";
 
 // Custom
 message Custom {

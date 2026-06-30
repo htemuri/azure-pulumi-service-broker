@@ -76,6 +76,14 @@ func NewBaseTemplate(projectName string, environment Environment, region Region,
 	return &base, nil
 }
 
+func (b *Base) Hash() TemplateOptions {
+	return TemplateOptions_TEMPLATE_OPTIONS_BASE
+}
+
+func (b *Base) GetDependsOn() []TemplateOptions {
+	return []TemplateOptions{}
+}
+
 func (b *Base) PulumiRunFunc() pulumi.RunFunc {
 	return func(ctx *pulumi.Context) error {
 		projectName := b.DefaultParams.GetProjectName()

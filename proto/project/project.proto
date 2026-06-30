@@ -5,18 +5,12 @@ package proto.project;
 import "proto/templates/shared.proto";
 import "proto/templates/template.proto";
 
-option go_package = "pkg/broker";
+option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/broker";
 
 message Project {
   string name = 1;
   proto.templates.Environment environment = 2;
-  proto.templates.Templates templates = 3;
-  // repeated UserPersonaEntry users = 2;
-  // repeated GroupPersonaEntry groups = 3;
-  // ServicePrincipalOptions service_principal = 4;
-  // StorageAccountOptions storage_account = 5;
-  // KeyVaultOptions key_vault_options = 6;
-  // DataFactoryOptions data_factory_options = 7;
+  repeated proto.templates.Templates templates = 3;
 }
 
 message UserPersonaEntry {

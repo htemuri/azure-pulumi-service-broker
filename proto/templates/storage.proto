@@ -4,7 +4,7 @@ package proto.templates;
 
 import "proto/templates/shared.proto";
 
-option go_package = "pkg/templates";
+option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/templates";
 
 // stack for storage accounts, sql server, postgres flexible, and other resource types that are storage related ...
 message Storage {

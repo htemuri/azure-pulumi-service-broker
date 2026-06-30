@@ -4,7 +4,7 @@ package proto.broker;
 
 import "proto/project/project.proto";
 
-option go_package = "pkg/broker";
+option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/broker";
 
 message CreateProjectRequest {
   proto.project.Project project = 1;
