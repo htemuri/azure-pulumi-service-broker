@@ -10,11 +10,13 @@ import (
 )
 
 type Template interface {
-	// isTemplates_Template
 	Hash() TemplateOptions
 	GetDefaultParams() *DefaultParams
 	PulumiRunFunc() pulumi.RunFunc
+	GetStackName() string
+	GetProviders() []ProviderVersion
 	GetDependsOn() []TemplateOptions
+	Validate() error
 }
 
 func GetEnabledTemplates(templates []*Templates) ([]Template, error) {
@@ -24,12 +26,10 @@ func GetEnabledTemplates(templates []*Templates) ([]Template, error) {
 		if wrapper == nil {
 			return nil, fmt.Errorf("template entry has no oneof case set")
 		}
-
 		inner, err := unwrapOneof(wrapper)
 		if err != nil {
 			return nil, err
 		}
-
 		tmpl, ok := inner.(Template)
 		if !ok {
 			return nil, fmt.Errorf("type %T does not implement Template", inner)
@@ -40,9 +40,9 @@ func GetEnabledTemplates(templates []*Templates) ([]Template, error) {
 }
 
 // extracts the single field out of Templates oneof wrapper struct
-func unwrapOneof(wrapper isTemplates_Template) (interface{}, error) {
+func unwrapOneof(wrapper isTemplates_Template) (any, error) {
 	v := reflect.ValueOf(wrapper)
-	if v.Kind() != reflect.Ptr || v.IsNil() || v.Elem().Kind() != reflect.Struct {
+	if v.Kind() != reflect.Pointer || v.IsNil() || v.Elem().Kind() != reflect.Struct {
 		return nil, fmt.Errorf("unexpected oneof wrapper type %T", wrapper)
 	}
 	elem := v.Elem()

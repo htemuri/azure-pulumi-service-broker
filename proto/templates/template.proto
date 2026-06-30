@@ -15,3 +15,8 @@ message Templates {
   // optional templates.Base base = 1;
   // repeated Custom custom = 2;
 }
+
+enum TemplateOptions {
+  TEMPLATE_OPTIONS_UNSPECIFIED = 0;
+  TEMPLATE_OPTIONS_BASE = 1;
+}

@@ -13,7 +13,7 @@ message Base {
 }
 
 message SubscriptionArgs {
-  optional string subscription_id = 1; // if not set, create a subscription using the env and project name in the format of "[{Environment}] Client Project: {ProjectName}"
+  string subscription_id = 1; // if not set, create a subscription using the env and project name in the format of "[{Environment}] Client Project: {ProjectName}"
   string billing_scope = 2;
   string management_group_id = 3;
 }

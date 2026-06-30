@@ -4,11 +4,6 @@ package proto.templates;
 
 option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/templates";
 
-enum TemplateOptions {
-  TEMPLATE_OPTIONS_UNSPECIFIED = 0;
-  TEMPLATE_OPTIONS_BASE = 1;
-}
-
 enum Environment {
   ENVIRONMENT_UNSPECIFIED = 0;
   ENVIRONMENT_DEV = 1;
@@ -26,12 +21,10 @@ enum Region {
 message DefaultParams {
   bool enabled = 1;
   string project_name = 2;
-  string stack_name = 3;
-  Environment environment = 4;
-  Region region = 5; // if unspecified, will default to eastus
-  PulumiProviderCredentialArgs pulumi_provider_credential = 6;
-  repeated ProviderVersion providers = 7;
-  repeated TemplateOptions depends_on = 8;
+  Environment environment = 3;
+  Region region = 4; // if unspecified, will default to eastus
+  PulumiProviderCredentialArgs pulumi_provider_credential = 5;
+  // repeated TemplateOptions depends_on = 8;
 }
 
 message PulumiProviderCredentialArgs {

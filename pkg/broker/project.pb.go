@@ -136,10 +136,9 @@ type Project struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Name        string                `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Environment templates.Environment `protobuf:"varint,2,opt,name=environment,proto3,enum=proto.templates.Environment" json:"environment,omitempty"`
-	// proto.templates.Templates templates = 3;
-	Templates []*templates.Templates `protobuf:"bytes,3,rep,name=templates,proto3" json:"templates,omitempty"`
+	Name        string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Environment templates.Environment  `protobuf:"varint,2,opt,name=environment,proto3,enum=proto.templates.Environment" json:"environment,omitempty"`
+	Templates   []*templates.Templates `protobuf:"bytes,3,rep,name=templates,proto3" json:"templates,omitempty"`
 }
 
 func (x *Project) Reset() {

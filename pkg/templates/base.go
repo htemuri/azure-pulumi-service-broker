@@ -14,64 +14,20 @@ import (
 )
 
 func NewBaseTemplate(projectName string, environment Environment, region Region, subscriptionArgs *SubscriptionArgs, networkArgs *NetworkArgs, cred *PulumiProviderCredentialArgs) (*Base, error) {
-
-	if projectName == "" {
-		return &Base{}, fmt.Errorf("projectName cannot be an empty string")
-	}
-	if environment == Environment_ENVIRONMENT_UNSPECIFIED {
-		return &Base{}, fmt.Errorf("environment must be specified")
-	}
-	if region == Region_REGION_UNSPECIFIED {
-		region = Region_REGION_EASTUS
-	}
-
-	if subscriptionArgs.GetSubscriptionId() == "" {
-		if subscriptionArgs.BillingScope == "" {
-			return &Base{}, fmt.Errorf("billing scope must be provided if not using existing subscription")
-		}
-		if subscriptionArgs.ManagementGroupId == "" {
-			return &Base{}, fmt.Errorf("management group id must be provided if not using existing subscription")
-		}
-	}
-
-	if networkArgs.IpamPoolPrefixAllocations.IpamPoolResourceId == "" {
-		return &Base{}, fmt.Errorf("missing resource id of ipam pool for vnet")
-	}
-	if networkArgs.IpamPoolPrefixAllocations.NumberOfIpAddresses < 32 {
-		return &Base{}, fmt.Errorf("number of IP addresses for vnet should be above 32")
-	}
-	totalSubnetIpsUsed := int32(0)
-	for _, subnet := range networkArgs.Subnets {
-		if subnet.Name == "" {
-			return &Base{}, fmt.Errorf("missing name from subnet args")
-		}
-		if subnet.NumberOfIpAddresses < 32 {
-			return &Base{}, fmt.Errorf("number of IP addresses for subnets must be above 32")
-		} else if subnet.NumberOfIpAddresses > (networkArgs.IpamPoolPrefixAllocations.NumberOfIpAddresses - totalSubnetIpsUsed) {
-			return &Base{}, fmt.Errorf("not enough available IPs for subnet %s in the VNET with the previously allocated subnets", subnet.Name)
-		}
-		totalSubnetIpsUsed += subnet.NumberOfIpAddresses
-	}
-
-	if _, err := cred.Validate(); err != nil {
-		return &Base{}, err
-	}
-
-	stackName := fmt.Sprintf("%s-base", environment.ShortString())
-	providers := []*ProviderVersion{{ProviderName: "azure-native", Version: "v3.19.0"}}
-
 	base := Base{
 		DefaultParams: &DefaultParams{
-			Enabled:     true,
-			ProjectName: projectName,
-			StackName:   stackName,
-			Environment: environment,
-			Region:      region,
-			Providers:   providers,
-			DependsOn:   []TemplateOptions{},
+			Enabled:                  true,
+			ProjectName:              projectName,
+			Environment:              environment,
+			Region:                   region,
+			PulumiProviderCredential: cred,
 		},
 		Subscription:   subscriptionArgs,
 		VirtualNetwork: networkArgs,
+	}
+	err := base.Validate()
+	if err != nil {
+		return &Base{}, err
 	}
 	return &base, nil
 }
@@ -80,8 +36,80 @@ func (b *Base) Hash() TemplateOptions {
 	return TemplateOptions_TEMPLATE_OPTIONS_BASE
 }
 
+func (b *Base) GetStackName() string {
+	return fmt.Sprintf("%s-base", b.GetDefaultParams().Environment.ShortString())
+}
+
+func (b *Base) GetProviders() []ProviderVersion {
+	return []ProviderVersion{{ProviderName: "azure-native", Version: "v3.19.0"}}
+}
+
 func (b *Base) GetDependsOn() []TemplateOptions {
 	return []TemplateOptions{}
+}
+
+func (b *Base) Validate() error {
+	if b == nil {
+		return fmt.Errorf("base can't be nil")
+	}
+	d := b.GetDefaultParams()
+	s := b.GetSubscription()
+	n := b.GetVirtualNetwork()
+	if d == nil {
+		return fmt.Errorf("default params can't be nil")
+	}
+	if s == nil {
+		return fmt.Errorf("subscription args can't be nil")
+	}
+	if n == nil {
+		return fmt.Errorf("network args can't be nil")
+	}
+	if d.ProjectName == "" {
+		return fmt.Errorf("projectName cannot be an empty string")
+	}
+	if d.Environment == Environment_ENVIRONMENT_UNSPECIFIED {
+		return fmt.Errorf("environment must be specified")
+	}
+	if d.Region == Region_REGION_UNSPECIFIED {
+		d.Region = Region_REGION_EASTUS
+	}
+
+	if b.Subscription.GetSubscriptionId() == "" {
+		if b.Subscription.BillingScope == "" {
+			return fmt.Errorf("billing scope must be provided if not using existing subscription")
+		}
+		if b.Subscription.ManagementGroupId == "" {
+			return fmt.Errorf("management group id must be provided if not using existing subscription")
+		}
+	}
+
+	if n.IpamPoolPrefixAllocations.IpamPoolResourceId == "" {
+		return fmt.Errorf("missing resource id of ipam pool for vnet")
+	}
+	if n.IpamPoolPrefixAllocations.NumberOfIpAddresses < 32 {
+		return fmt.Errorf("number of IP addresses for vnet should be above 32")
+	}
+	totalSubnetIpsUsed := int32(0)
+	for _, subnet := range n.Subnets {
+		if subnet.Name == "" {
+			return fmt.Errorf("missing name from subnet args")
+		}
+		if subnet.NumberOfIpAddresses < 32 {
+			return fmt.Errorf("number of IP addresses for subnets must be above 32")
+		} else if subnet.NumberOfIpAddresses > (n.IpamPoolPrefixAllocations.NumberOfIpAddresses - totalSubnetIpsUsed) {
+			return fmt.Errorf("not enough available IPs for subnet %s in the VNET with the previously allocated subnets", subnet.Name)
+		}
+		totalSubnetIpsUsed += subnet.NumberOfIpAddresses
+	}
+
+	cred := d.GetPulumiProviderCredential()
+	if cred == nil {
+		return fmt.Errorf("pulumi provider credentials can't be nil")
+	}
+	if _, err := cred.Validate(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (b *Base) PulumiRunFunc() pulumi.RunFunc {

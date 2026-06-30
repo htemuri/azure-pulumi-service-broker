@@ -39,16 +39,21 @@ func (nh *NatsHandler) Handle() error {
 }
 
 func (nh *NatsHandler) handleTemplate(t templates.Template) error {
+	err := t.Validate()
+	if err != nil {
+		return fmt.Errorf("%T template validation failed: %s", t, err)
+	}
+
 	projectName := fmt.Sprintf("client-project-%s", nh.project.Name)
 
-	s, err := auto.UpsertStackInlineSource(nh.ctx, t.GetDefaultParams().StackName, projectName, t.PulumiRunFunc())
+	s, err := auto.UpsertStackInlineSource(nh.ctx, t.GetStackName(), projectName, t.PulumiRunFunc())
 	if err != nil {
 		return fmt.Errorf("failed to create/update stack with error: %s", err)
 	}
 	logger.Printf("created/selected stack %s/%s\n", projectName, s.Name())
 	logger.Println("configuring workspace...")
 	workspace := s.Workspace()
-	for _, p := range t.GetDefaultParams().GetProviders() {
+	for _, p := range t.GetProviders() {
 		err := workspace.InstallPlugin(nh.ctx, p.ProviderName, p.Version)
 		if err != nil {
 			return fmt.Errorf("failed to install program plugins: %v\n", err)

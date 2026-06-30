@@ -35,25 +35,30 @@ func main() {
 
 	// assume I unmarshalled grpc request to project protobuf go type
 	projectName := "covid"
-	env := templates.Environment_ENVIRONMENT_DEV
+	env := templates.Environment_ENVIRONMENT_PRD
 	base, err := templates.NewBaseTemplate(
 		projectName, env, templates.Region_REGION_EASTUS, &templates.SubscriptionArgs{
-			BillingScope:      os.Getenv("BILLING_SCOPE"),
-			ManagementGroupId: os.Getenv("CLIENT_PROJ_MGMT_GROUP_ID"),
-		}, &templates.NetworkArgs{IpamPoolPrefixAllocations: &templates.IpamPoolPrefixAllocation{IpamPoolResourceId: os.Getenv("CLIENT_DEV_IPAM_RESOURCE_ID"), NumberOfIpAddresses: 32}, Subnets: make([]*templates.SubnetArgs, 0)}, &templates.PulumiProviderCredentialArgs{
+			SubscriptionId: "23b1b9f5-6b57-4c00-87d7-7b49d4d88c6c",
+			// BillingScope:      os.Getenv("BILLING_SCOPE"),
+			// ManagementGroupId: os.Getenv("CLIENT_PROJ_MGMT_GROUP_ID"),
+		}, &templates.NetworkArgs{
+			IpamPoolPrefixAllocations: &templates.IpamPoolPrefixAllocation{
+				IpamPoolResourceId:  os.Getenv("CLIENT_PRD_IPAM_RESOURCE_ID"),
+				NumberOfIpAddresses: 32},
+			Subnets: make([]*templates.SubnetArgs, 0)},
+		&templates.PulumiProviderCredentialArgs{
 			TenantId:     os.Getenv("TENANT_ID"),
 			ClientId:     os.Getenv("PULUMI_SP_CLIENT_ID"),
 			ClientSecret: os.Getenv("PULUMI_SP_CLIENT_SECRET"),
 		})
 	if err != nil {
-		log.Fatalf("failed to create template: %s", err)
+		logger.Printf("failed to create template: %s", err)
 	}
 	project := broker.Project{
 		Name:        projectName,
 		Environment: env,
 		Templates:   []*templates.Templates{{Template: &templates.Templates_Base{Base: base}}},
 	}
-	logger.Println("after project init")
 
 	// project := broker.Project{
 	// 	Name:               "hanta",
@@ -74,8 +79,6 @@ func main() {
 	if err != nil {
 		logger.Fatalf("failed to marshal project: %s", err)
 	}
-	logger.Println("after marshal")
-
 	// create/update the project stream
 
 	_, err = js.UpdateStream(&nats.StreamConfig{Name: "ProjectJobQueue", Description: "Stream to manage active jobs for projects", Subjects: []string{"create", "update", "delete", "failed"}})

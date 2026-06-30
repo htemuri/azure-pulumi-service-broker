@@ -20,6 +20,52 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type TemplateOptions int32
+
+const (
+	TemplateOptions_TEMPLATE_OPTIONS_UNSPECIFIED TemplateOptions = 0
+	TemplateOptions_TEMPLATE_OPTIONS_BASE        TemplateOptions = 1
+)
+
+// Enum value maps for TemplateOptions.
+var (
+	TemplateOptions_name = map[int32]string{
+		0: "TEMPLATE_OPTIONS_UNSPECIFIED",
+		1: "TEMPLATE_OPTIONS_BASE",
+	}
+	TemplateOptions_value = map[string]int32{
+		"TEMPLATE_OPTIONS_UNSPECIFIED": 0,
+		"TEMPLATE_OPTIONS_BASE":        1,
+	}
+)
+
+func (x TemplateOptions) Enum() *TemplateOptions {
+	p := new(TemplateOptions)
+	*p = x
+	return p
+}
+
+func (x TemplateOptions) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TemplateOptions) Descriptor() protoreflect.EnumDescriptor {
+	return file_proto_templates_template_proto_enumTypes[0].Descriptor()
+}
+
+func (TemplateOptions) Type() protoreflect.EnumType {
+	return &file_proto_templates_template_proto_enumTypes[0]
+}
+
+func (x TemplateOptions) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TemplateOptions.Descriptor instead.
+func (TemplateOptions) EnumDescriptor() ([]byte, []int) {
+	return file_proto_templates_template_proto_rawDescGZIP(), []int{0}
+}
+
 type Templates struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -118,7 +164,12 @@ var file_proto_templates_template_proto_rawDesc = []byte{
 	0x69, 0x74, 0x79, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x19, 0x2e, 0x70, 0x72, 0x6f, 0x74,
 	0x6f, 0x2e, 0x74, 0x65, 0x6d, 0x70, 0x6c, 0x61, 0x74, 0x65, 0x73, 0x2e, 0x53, 0x65, 0x63, 0x75,
 	0x72, 0x69, 0x74, 0x79, 0x48, 0x00, 0x52, 0x08, 0x73, 0x65, 0x63, 0x75, 0x72, 0x69, 0x74, 0x79,
-	0x42, 0x0a, 0x0a, 0x08, 0x74, 0x65, 0x6d, 0x70, 0x6c, 0x61, 0x74, 0x65, 0x42, 0x3e, 0x5a, 0x3c,
+	0x42, 0x0a, 0x0a, 0x08, 0x74, 0x65, 0x6d, 0x70, 0x6c, 0x61, 0x74, 0x65, 0x2a, 0x4e, 0x0a, 0x0f,
+	0x54, 0x65, 0x6d, 0x70, 0x6c, 0x61, 0x74, 0x65, 0x4f, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x73, 0x12,
+	0x20, 0x0a, 0x1c, 0x54, 0x45, 0x4d, 0x50, 0x4c, 0x41, 0x54, 0x45, 0x5f, 0x4f, 0x50, 0x54, 0x49,
+	0x4f, 0x4e, 0x53, 0x5f, 0x55, 0x4e, 0x53, 0x50, 0x45, 0x43, 0x49, 0x46, 0x49, 0x45, 0x44, 0x10,
+	0x00, 0x12, 0x19, 0x0a, 0x15, 0x54, 0x45, 0x4d, 0x50, 0x4c, 0x41, 0x54, 0x45, 0x5f, 0x4f, 0x50,
+	0x54, 0x49, 0x4f, 0x4e, 0x53, 0x5f, 0x42, 0x41, 0x53, 0x45, 0x10, 0x01, 0x42, 0x3e, 0x5a, 0x3c,
 	0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x68, 0x74, 0x65, 0x6d, 0x75,
 	0x72, 0x69, 0x2f, 0x61, 0x7a, 0x75, 0x72, 0x65, 0x2d, 0x70, 0x75, 0x6c, 0x75, 0x6d, 0x69, 0x2d,
 	0x73, 0x65, 0x72, 0x76, 0x69, 0x63, 0x65, 0x2d, 0x62, 0x72, 0x6f, 0x6b, 0x65, 0x72, 0x2f, 0x70,
@@ -138,15 +189,17 @@ func file_proto_templates_template_proto_rawDescGZIP() []byte {
 	return file_proto_templates_template_proto_rawDescData
 }
 
+var file_proto_templates_template_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_proto_templates_template_proto_msgTypes = make([]protoimpl.MessageInfo, 1)
 var file_proto_templates_template_proto_goTypes = []interface{}{
-	(*Templates)(nil), // 0: proto.templates.Templates
-	(*Base)(nil),      // 1: proto.templates.Base
-	(*Security)(nil),  // 2: proto.templates.Security
+	(TemplateOptions)(0), // 0: proto.templates.TemplateOptions
+	(*Templates)(nil),    // 1: proto.templates.Templates
+	(*Base)(nil),         // 2: proto.templates.Base
+	(*Security)(nil),     // 3: proto.templates.Security
 }
 var file_proto_templates_template_proto_depIdxs = []int32{
-	1, // 0: proto.templates.Templates.base:type_name -> proto.templates.Base
-	2, // 1: proto.templates.Templates.security:type_name -> proto.templates.Security
+	2, // 0: proto.templates.Templates.base:type_name -> proto.templates.Base
+	3, // 1: proto.templates.Templates.security:type_name -> proto.templates.Security
 	2, // [2:2] is the sub-list for method output_type
 	2, // [2:2] is the sub-list for method input_type
 	2, // [2:2] is the sub-list for extension type_name
@@ -184,13 +237,14 @@ func file_proto_templates_template_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_proto_templates_template_proto_rawDesc,
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   1,
 			NumExtensions: 0,
 			NumServices:   0,
 		},
 		GoTypes:           file_proto_templates_template_proto_goTypes,
 		DependencyIndexes: file_proto_templates_template_proto_depIdxs,
+		EnumInfos:         file_proto_templates_template_proto_enumTypes,
 		MessageInfos:      file_proto_templates_template_proto_msgTypes,
 	}.Build()
 	File_proto_templates_template_proto = out.File
