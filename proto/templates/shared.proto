@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package proto.templates;
+
+option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/templates";
+
+enum TemplateOptions {
+  TEMPLATE_OPTIONS_UNSPECIFIED = 0;
+  TEMPLATE_OPTIONS_BASE = 1;
+}
+
+enum Environment {
+  ENVIRONMENT_UNSPECIFIED = 0;
+  ENVIRONMENT_DEV = 1;
+  ENVIRONMENT_TST = 2;
+  ENVIRONMENT_STG = 3;
+  ENVIRONMENT_PRD = 4;
+}
+
+enum Region {
+  REGION_UNSPECIFIED = 0;
+  REGION_EASTUS = 1;
+  REGION_EASTUS2 = 2;
+}
+
+message DefaultParams {
+  bool enabled = 1;
+  string project_name = 2;
+  string stack_name = 3;
+  Environment environment = 4;
+  Region region = 5; // if unspecified, will default to eastus
+  PulumiProviderCredentialArgs pulumi_provider_credential = 6;
+  repeated ProviderVersion providers = 7;
+  repeated TemplateOptions depends_on = 8;
+}
+
+message PulumiProviderCredentialArgs {
+  string tenant_id = 1;
+  string client_id = 2;
+  string client_secret = 3;
+}
+
+message ProviderVersion {
+  string provider_name = 1;
+  string version = 2;
+}
+
+message ResourceNetworkArgs {
+  bool public_network_enabled = 1; // default disabled
+  PrivateEndpointArgs private_endpoint = 2;
+}
+
+message PrivateEndpointArgs {
+  bool enabled = 1; // default disabled
+  optional string subnet_id = 2; // if not specified, then use default subnet id from base network vnet
+  repeated string sub_resources = 3;
+}

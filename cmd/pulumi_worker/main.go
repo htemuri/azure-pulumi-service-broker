@@ -6,7 +6,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/htemuri/azure-pulumi-service-broker/pkg/template"
+	"github.com/htemuri/azure-pulumi-service-broker/pkg/broker"
 	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -19,21 +19,21 @@ func main() {
 	natsServer := nats.DefaultURL
 	ctx := context.Background()
 
-	err := godotenv.Load()
+	err := godotenv.Load("/home/harristemuri/Projects/azure-pulumi-service-broker/.env")
 	if err != nil {
 		logger.Fatal("error loading .env file:", err)
 	}
 
 	// TODO: Make this better - maybe add defaults as a method of the config class
 	config := Config{
-		PulumiClientId:                   os.Getenv("PULUMI_SP_CLIENT_ID"),
-		PulumiClientSecret:               os.Getenv("PULUMI_SP_CLIENT_SECRET"),
-		TenantId:                         os.Getenv("TENANT_ID"),
-		BillingScope:                     os.Getenv("BILLING_SCOPE"),
-		ClientProjectManagementGroupId:   os.Getenv("CLIENT_PROJ_MGMT_GROUP_ID"),
-		Region:                           os.Getenv("REGION"),
-		ClientDevVnetIpAllocId:           os.Getenv("CLIENT_DEV_IPAM_RESOURCE_ID"),
-		EntraIdAdminObjectIds:            []string{"b70d6761-f96e-4c7e-a352-b459099a3c09"}, // can point to a database list of admins
+		// PulumiClientId:                   os.Getenv("PULUMI_SP_CLIENT_ID"),
+		// PulumiClientSecret:               os.Getenv("PULUMI_SP_CLIENT_SECRET"),
+		// TenantId:                         os.Getenv("TENANT_ID"),
+		// BillingScope:                     os.Getenv("BILLING_SCOPE"),
+		// ClientProjectManagementGroupId:   os.Getenv("CLIENT_PROJ_MGMT_GROUP_ID"),
+		// Region:                           os.Getenv("REGION"),
+		// ClientDevVnetIpAllocId:           os.Getenv("CLIENT_DEV_IPAM_RESOURCE_ID"),
+		// EntraIdAdminObjectIds:            []string{"b70d6761-f96e-4c7e-a352-b459099a3c09"}, // can point to a database list of admins
 		ProjectStreamName:                os.Getenv("PROJECT_STREAM_NAME"),
 		PulumiAzureADProviderVersion:     os.Getenv("PULUMI_AZUREAD_PROVIDER_VERSION"),
 		PulumiAzureNativeProviderVersion: os.Getenv("PULUMI_AZURENATIVE_PROVIDER_VERSION"),
@@ -77,28 +77,37 @@ func main() {
 			return
 		}
 		msg.InProgress()
-		var project template.Project
+		var project broker.Project
 		err = proto.Unmarshal(msg.Data(), &project)
 		if err != nil {
 			logger.Printf("failed to unmarshal message from subject '%s' with error: \n%s", msg.Subject(), err)
 			msg.Nak()
 			return
 		}
-		nh := NewNatsHandler(context.Background(), &wg, []Environment{Environment_ENTRA, Environment_DEV}, &project, config)
+		nh := NewNatsHandler(context.Background(), &project)
 		msg.Ack()
 		logger.Printf("received a message from subject '%s' about project with name '%s'\n", msg.Subject(), project.Name)
 
-		errs := nh.Handle()
-		if len(errs) > 0 {
-			for _, e := range errs {
-				logger.Print(e)
-			}
+		err = nh.Handle()
+		if err != nil {
+			logger.Printf("failed to deploy templates for project %s with error: %s", project.Name, err)
 			logger.Printf("sending project %s to failed deployment queue\n", project.Name)
-			_, errPub := js.Publish(ctx, "failed", msg.Data())
-			if errPub != nil {
-				logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", errPub)
+			_, err = js.Publish(ctx, "failed", msg.Data())
+			if err != nil {
+				logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", err)
 			}
 		}
+
+		// if len(errs) > 0 {
+		// 	for _, e := range errs {
+		// 		logger.Print(e)
+		// 	}
+		// 	logger.Printf("sending project %s to failed deployment queue\n", project.Name)
+		// 	_, errPub := js.Publish(ctx, "failed", msg.Data())
+		// 	if errPub != nil {
+		// 		logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", errPub)
+		// 	}
+		// }
 	}); err != nil {
 		logger.Fatal("failed to consume messages from durable stream with error:", err)
 	}

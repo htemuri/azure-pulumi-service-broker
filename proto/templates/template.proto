@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package proto.templates;
+
+import "proto/templates/base.proto";
+import "proto/templates/security.proto";
+
+option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/templates";
+
+message Templates {
+  oneof template {
+    templates.Base base = 1;
+    templates.Security security = 2;
+  }
+  // optional templates.Base base = 1;
+  // repeated Custom custom = 2;
+}

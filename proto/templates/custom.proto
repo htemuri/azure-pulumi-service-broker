@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package proto.templates;
+
+import "proto/templates/shared.proto";
+
+option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/templates";
+
+// Custom
+message Custom {
+  DefaultParams default_params = 1;
+}
