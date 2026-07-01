@@ -6,6 +6,7 @@ import "proto/templates/shared.proto";
 
 option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/templates";
 
+// Stack creating/selecting subscription and networking
 message Base {
   DefaultParams default_params = 1;
   SubscriptionArgs subscription = 2;

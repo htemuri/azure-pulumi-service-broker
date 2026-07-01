@@ -13,7 +13,7 @@ message Security {
 }
 
 message KeyVaultArgs {
-  optional bool disabled = 1; // enabled by default
+  bool disabled = 1; // enabled by default
   ResourceNetworkArgs network_settings = 2;
 }
 

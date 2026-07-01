@@ -1,22 +1,87 @@
 package templates
 
 import (
+	"context"
 	"fmt"
 	reflect "reflect"
+	"slices"
 
 	"github.com/dominikbraun/graph"
-
+	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 type Template interface {
 	Hash() TemplateOptions
 	GetDefaultParams() *DefaultParams
-	PulumiRunFunc() pulumi.RunFunc
+	Deploy(
+		ctx context.Context,
+		cm map[string]any,
+		autonamingConfig map[string]string,
+	) (map[string]any, error)
+	GetProjectName() string
 	GetStackName() string
-	GetProviders() []ProviderVersion
+	GetProviders() []*ProviderVersion
 	GetDependsOn() []TemplateOptions
+	PulumiRunFunc() pulumi.RunFunc
 	Validate() error
+}
+
+func createOrSelectStack(t Template, ctx context.Context, autonamingConfig map[string]string) (auto.Stack, error) {
+	err := t.Validate()
+	if err != nil {
+		return auto.Stack{}, fmt.Errorf("%T template validation failed: %s", t, err)
+	}
+
+	projectName := fmt.Sprintf("client-project-%s", t.GetProjectName())
+	s, err := auto.UpsertStackInlineSource(ctx, t.GetStackName(), projectName, t.PulumiRunFunc())
+	if err != nil {
+		return auto.Stack{}, fmt.Errorf("failed to create/update stack with error: %s", err)
+	}
+	workspace := s.Workspace()
+	for _, p := range t.GetProviders() {
+		err := workspace.InstallPlugin(ctx, p.GetProviderName(), p.GetVersion())
+		if err != nil {
+			return auto.Stack{}, fmt.Errorf("failed to install program plugins: %v\n", err)
+		}
+	}
+	s.SetConfig(ctx, "azure-native:location", auto.ConfigValue{Value: t.GetDefaultParams().Region.ShortString()})
+	for k, v := range autonamingConfig {
+		c := fmt.Sprintf("pulumi:autonaming.providers.azure-native.resources.azure-native:%s.pattern", k)
+		err = s.SetConfigWithOptions(ctx, c, auto.ConfigValue{Value: v}, &auto.ConfigOptions{
+			Path: true,
+		})
+		if err != nil {
+			return auto.Stack{}, fmt.Errorf("failed to set autonaming config: %v\n", err)
+		}
+	}
+	_, err = s.Refresh(ctx)
+	if err != nil {
+		return auto.Stack{}, fmt.Errorf("failed to refresh stack: %v\n", err)
+	}
+
+	return s, nil
+}
+
+func GetValidDefaultParams(t Template) (*DefaultParams, error) {
+	d := t.GetDefaultParams()
+	if d == nil {
+		return &DefaultParams{}, fmt.Errorf("default params can't be nil")
+	}
+	if d.ProjectName == "" {
+		return &DefaultParams{}, fmt.Errorf("projectName cannot be an empty string")
+	}
+	if d.Environment == Environment_ENVIRONMENT_UNSPECIFIED {
+		return &DefaultParams{}, fmt.Errorf("environment must be specified")
+	}
+	cred := d.GetPulumiProviderCredential()
+	if cred == nil {
+		return &DefaultParams{}, fmt.Errorf("pulumi provider credentials can't be nil")
+	}
+	if _, err := cred.Validate(); err != nil {
+		return &DefaultParams{}, err
+	}
+	return d, nil
 }
 
 func GetEnabledTemplates(templates []*Templates) ([]Template, error) {
@@ -80,7 +145,9 @@ func GetTemplateInstallOrder(t []*Templates) ([]Template, error) {
 	if err != nil {
 		return []Template{}, fmt.Errorf("failed to build directed acyclic graph of template dependencies: %s", err)
 	}
+	fmt.Println(g)
 	sortedTemplateOptions, err := graph.TopologicalSort(g)
+	slices.Reverse(sortedTemplateOptions) // topological sort does it in the opposite order we need
 	if err != nil {
 		return []Template{}, fmt.Errorf("failed to sort dag: %s", err)
 	}

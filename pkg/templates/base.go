@@ -1,7 +1,9 @@
 package templates
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 
@@ -10,11 +12,12 @@ import (
 	"github.com/pulumi/pulumi-azure-native-sdk/subscription/v3"
 	pulumiazurenativesdk "github.com/pulumi/pulumi-azure-native-sdk/v3"
 	"github.com/pulumi/pulumi-command/sdk/go/command/local"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func NewBaseTemplate(projectName string, environment Environment, region Region, subscriptionArgs *SubscriptionArgs, networkArgs *NetworkArgs, cred *PulumiProviderCredentialArgs) (*Base, error) {
-	base := Base{
+	b := Base{
 		DefaultParams: &DefaultParams{
 			Enabled:                  true,
 			ProjectName:              projectName,
@@ -25,23 +28,27 @@ func NewBaseTemplate(projectName string, environment Environment, region Region,
 		Subscription:   subscriptionArgs,
 		VirtualNetwork: networkArgs,
 	}
-	err := base.Validate()
+	err := b.Validate()
 	if err != nil {
 		return &Base{}, err
 	}
-	return &base, nil
+	return &b, nil
 }
 
 func (b *Base) Hash() TemplateOptions {
 	return TemplateOptions_TEMPLATE_OPTIONS_BASE
 }
 
+func (b *Base) GetProjectName() string {
+	return b.DefaultParams.GetProjectName()
+}
+
 func (b *Base) GetStackName() string {
 	return fmt.Sprintf("%s-base", b.GetDefaultParams().Environment.ShortString())
 }
 
-func (b *Base) GetProviders() []ProviderVersion {
-	return []ProviderVersion{{ProviderName: "azure-native", Version: "v3.19.0"}}
+func (b *Base) GetProviders() []*ProviderVersion {
+	return []*ProviderVersion{{ProviderName: "azure-native", Version: "v3.19.0"}}
 }
 
 func (b *Base) GetDependsOn() []TemplateOptions {
@@ -52,26 +59,20 @@ func (b *Base) Validate() error {
 	if b == nil {
 		return fmt.Errorf("base can't be nil")
 	}
-	d := b.GetDefaultParams()
+	d, err := GetValidDefaultParams(b)
+	if err != nil {
+		return err
+	}
+	if d.Region == Region_REGION_UNSPECIFIED {
+		d.Region = Region_REGION_EASTUS
+	}
 	s := b.GetSubscription()
 	n := b.GetVirtualNetwork()
-	if d == nil {
-		return fmt.Errorf("default params can't be nil")
-	}
 	if s == nil {
 		return fmt.Errorf("subscription args can't be nil")
 	}
 	if n == nil {
 		return fmt.Errorf("network args can't be nil")
-	}
-	if d.ProjectName == "" {
-		return fmt.Errorf("projectName cannot be an empty string")
-	}
-	if d.Environment == Environment_ENVIRONMENT_UNSPECIFIED {
-		return fmt.Errorf("environment must be specified")
-	}
-	if d.Region == Region_REGION_UNSPECIFIED {
-		d.Region = Region_REGION_EASTUS
 	}
 
 	if b.Subscription.GetSubscriptionId() == "" {
@@ -101,15 +102,36 @@ func (b *Base) Validate() error {
 		}
 		totalSubnetIpsUsed += subnet.NumberOfIpAddresses
 	}
-
-	cred := d.GetPulumiProviderCredential()
-	if cred == nil {
-		return fmt.Errorf("pulumi provider credentials can't be nil")
-	}
-	if _, err := cred.Validate(); err != nil {
-		return err
-	}
 	return nil
+}
+
+func (b *Base) Deploy(ctx context.Context, cm map[string]any, autonamingConfig map[string]string) (map[string]any, error) {
+	s, err := createOrSelectStack(b, ctx, autonamingConfig)
+	if err != nil {
+		return cm, err
+	}
+	// // 1 - 11 (least verbose to most verbose)
+	// logLevel := uint(2)
+
+	// debugLogging := optup.DebugLogging(debug.LoggingOptions{
+	// 	LogToStdErr:   true,
+	// 	LogLevel:      &logLevel,
+	// 	FlowToPlugins: true,
+	// 	Debug:         true,
+	// })
+
+	streamer := optup.ProgressStreams(os.Stdout)
+	res, err := s.Up(
+		ctx,
+		// debugLogging,
+		streamer)
+	if err != nil {
+		return cm, fmt.Errorf("failed to update stack: %v\n\n", err)
+	}
+	cm["subscriptionId"] = res.Outputs["subscriptionId"].Value
+	cm["vnetId"] = res.Outputs["vnetId"].Value
+	cm["subnets"] = res.Outputs["subnets"].Value
+	return cm, nil
 }
 
 func (b *Base) PulumiRunFunc() pulumi.RunFunc {
@@ -191,34 +213,8 @@ func (b *Base) PulumiRunFunc() pulumi.RunFunc {
 		ipamPool := b.VirtualNetwork.IpamPoolPrefixAllocations
 		vnetName := fmt.Sprintf("vnet-%s-%s-%s", strings.ToLower(projectName), strings.ToLower(envShort), strings.ToLower(b.DefaultParams.Region.ShortString()))
 
-		var subnets network.SubnetTypeArray
-		if len(b.VirtualNetwork.Subnets) > 0 {
-			for _, subnet := range b.VirtualNetwork.Subnets {
-				subnets = append(subnets, network.SubnetTypeArgs{
-					Name: pulumi.String(subnet.Name),
-					IpamPoolPrefixAllocations: network.IpamPoolPrefixAllocationArray{
-						network.IpamPoolPrefixAllocationArgs{
-							Id:                  pulumi.String(ipamPool.IpamPoolResourceId),
-							NumberOfIpAddresses: pulumi.String(strconv.Itoa(int(subnet.GetNumberOfIpAddresses()))),
-						},
-					},
-				})
-			}
-		} else {
-			// default subnet settings if not specified in base struct
-			subnets = append(subnets, network.SubnetTypeArgs{
-				Name: pulumi.String("default"),
-				IpamPoolPrefixAllocations: network.IpamPoolPrefixAllocationArray{
-					network.IpamPoolPrefixAllocationArgs{
-						Id:                  pulumi.String(ipamPool.IpamPoolResourceId),
-						NumberOfIpAddresses: pulumi.String("32"),
-					},
-				},
-			})
-		}
 		vnet, err := network.NewVirtualNetwork(ctx, vnetName, &network.VirtualNetworkArgs{
 			ResourceGroupName: networkRg.Name,
-			Subnets:           subnets,
 			AddressSpace: network.AddressSpaceArgs{
 				AddressPrefixes: make(pulumi.StringArray, 0),
 				IpamPoolPrefixAllocations: network.IpamPoolPrefixAllocationArray{
@@ -232,12 +228,39 @@ func (b *Base) PulumiRunFunc() pulumi.RunFunc {
 		}, pulumi.Provider(provider))
 		if err != nil {
 			ctx.Log.Error(err.Error(), nil)
-
 			return err
 		}
+
+		var subnets []*SubnetArgs
+		if len(b.VirtualNetwork.Subnets) > 0 {
+			subnets = append(subnets, b.VirtualNetwork.GetSubnets()...)
+		} else {
+			// default subnet settings if not specified in base struct
+			subnets = append(subnets, &SubnetArgs{
+				Name:                "default",
+				NumberOfIpAddresses: 32,
+			})
+		}
+		for _, s := range subnets {
+			_, err := network.NewSubnet(ctx, fmt.Sprintf("subnet-%s", s.GetName()), &network.SubnetArgs{
+				Name:               pulumi.String(s.GetName()),
+				VirtualNetworkName: vnet.Name,
+				ResourceGroupName:  networkRg.Name,
+				IpamPoolPrefixAllocations: network.IpamPoolPrefixAllocationArray{
+					network.IpamPoolPrefixAllocationArgs{
+						Id:                  pulumi.String(ipamPool.IpamPoolResourceId),
+						NumberOfIpAddresses: pulumi.String(strconv.Itoa(int(s.GetNumberOfIpAddresses()))),
+					},
+				},
+			}, pulumi.Provider(provider), pulumi.DependsOn([]pulumi.Resource{vnet}))
+			if err != nil {
+				return err
+			}
+		}
+
 		ctx.Export("subscriptionId", subscriptionId)
-		ctx.Export("vnet", vnet)
-		ctx.Export("provider", provider)
+		ctx.Export("vnetId", vnet.ID())
+		ctx.Export("subnets", vnet.Subnets)
 		return nil
 	}
 }

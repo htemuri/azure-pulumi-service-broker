@@ -20,6 +20,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Stack creating/selecting subscription and networking
 type Base struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
