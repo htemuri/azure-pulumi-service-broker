@@ -5,16 +5,16 @@ import (
 	"fmt"
 	"os"
 
+	templates "github.com/htemuri/azure-pulumi-service-broker/gen/go/templates/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-func NewStorageTemplate(projectName string, environment Environment, region Region, cred *PulumiProviderCredentialArgs) (*Storage, error) {
-	s := Storage{
-		DefaultParams: &DefaultParams{
-			Enabled:                  true,
+func NewStorageTemplate(projectName string, environment templates.Environment, region templates.Region, cred *templates.PulumiProviderCredentialArgs) (*templates.Storage, error) {
+	s := templates.Storage{
+		DefaultParams: &templates.DefaultParams{
 			ProjectName:              projectName,
 			Environment:              environment,
 			Region:                   region,
@@ -23,17 +23,17 @@ func NewStorageTemplate(projectName string, environment Environment, region Regi
 	}
 	err := s.Validate()
 	if err != nil {
-		return &Storage{}, err
+		return &templates.Storage{}, err
 	}
 
 	return &s, nil
 }
 
-func (s *Storage) Hash() TemplateOptions {
+func (s *Storage) Hash() templates.TemplateOptions {
 	return TemplateOptions_TEMPLATE_OPTIONS_STORAGE
 }
 
-func (s *Storage) GetProjectName() string {
+func (s *templates.Storage) GetProjectName() string {
 	return s.DefaultParams.GetProjectName()
 }
 
@@ -41,12 +41,12 @@ func (s *Storage) GetStackName() string {
 	return fmt.Sprintf("%s-storage", s.GetDefaultParams().Environment.ShortString())
 }
 
-func (s *Storage) GetProviders() []*ProviderVersion {
-	return []*ProviderVersion{{ProviderName: "azure-native", Version: "v3.19.0"}}
+func (s *Storage) GetProviders() []*templates.ProviderVersion {
+	return []*templates.ProviderVersion{{ProviderName: "azure-native", Version: "v3.19.0"}}
 }
 
-func (s *Storage) GetDependsOn() []TemplateOptions {
-	return []TemplateOptions{TemplateOptions_TEMPLATE_OPTIONS_BASE, TemplateOptions_TEMPLATE_OPTIONS_SECURITY}
+func (s *Storage) GetDependsOn() []templates.TemplateOptions {
+	return []templates.TemplateOptions{TemplateOptions_TEMPLATE_OPTIONS_BASE, TemplateOptions_TEMPLATE_OPTIONS_SECURITY}
 }
 
 func (s *Storage) Validate() error {

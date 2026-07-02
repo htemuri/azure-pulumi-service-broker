@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package templates.v1;
+
+import "templates/v1/base.proto";
+import "templates/v1/security.proto";
+import "templates/v1/storage.proto";
+
+option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/templates";
+
+message TemplateArgs {
+  oneof template {
+    BaseTemplateArgs base_args = 1;
+    SecurityTemplateArgs security_args = 2;
+    StorageTemplateArgs storage_args = 3;
+  }
+}
+
+enum TemplateOptions {
+  TEMPLATE_OPTIONS_UNSPECIFIED = 0;
+  TEMPLATE_OPTIONS_BASE = 1;
+  TEMPLATE_OPTIONS_SECURITY = 2;
+  TEMPLATE_OPTIONS_STORAGE = 3;
+}

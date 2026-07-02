@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	templates "github.com/htemuri/azure-pulumi-service-broker/gen/go/templates/v1"
+
 	"github.com/pulumi/pulumi-azure-native-sdk/network/v3"
 	"github.com/pulumi/pulumi-azure-native-sdk/resources/v3"
 	"github.com/pulumi/pulumi-azure-native-sdk/subscription/v3"
@@ -16,10 +18,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-func NewBaseTemplate(projectName string, environment Environment, region Region, subscriptionArgs *SubscriptionArgs, networkArgs *NetworkArgs, cred *PulumiProviderCredentialArgs) (*Base, error) {
-	b := Base{
-		DefaultParams: &DefaultParams{
-			Enabled:                  true,
+func NewBaseTemplate(projectName string, environment templates.Environment, region templates.Region, subscriptionArgs *templates.SubscriptionArgs, networkArgs *templates.NetworkArgs, cred *templates.PulumiProviderCredentialArgs) (*templates.Base, error) {
+	b := templates.Base{
+		DefaultParams: &templates.DefaultParams{
 			ProjectName:              projectName,
 			Environment:              environment,
 			Region:                   region,
@@ -30,13 +31,13 @@ func NewBaseTemplate(projectName string, environment Environment, region Region,
 	}
 	err := b.Validate()
 	if err != nil {
-		return &Base{}, err
+		return &templates.Base{}, err
 	}
 	return &b, nil
 }
 
-func (b *Base) Hash() TemplateOptions {
-	return TemplateOptions_TEMPLATE_OPTIONS_BASE
+func (b *Base) Hash() templates.TemplateOptions {
+	return templates.TemplateOptions_TEMPLATE_OPTIONS_BASE
 }
 
 func (b *Base) GetProjectName() string {
@@ -47,12 +48,12 @@ func (b *Base) GetStackName() string {
 	return fmt.Sprintf("%s-base", b.GetDefaultParams().Environment.ShortString())
 }
 
-func (b *Base) GetProviders() []*ProviderVersion {
-	return []*ProviderVersion{{ProviderName: "azure-native", Version: "v3.19.0"}}
+func (b *Base) GetProviders() []*templates.ProviderVersion {
+	return []*templates.ProviderVersion{{ProviderName: "azure-native", Version: "v3.19.0"}}
 }
 
-func (b *Base) GetDependsOn() []TemplateOptions {
-	return []TemplateOptions{}
+func (b *Base) GetDependsOn() []templates.TemplateOptions {
+	return []templates.TemplateOptions{}
 }
 
 func (b *Base) Validate() error {
@@ -63,8 +64,8 @@ func (b *Base) Validate() error {
 	if err != nil {
 		return err
 	}
-	if d.Region == Region_REGION_UNSPECIFIED {
-		d.Region = Region_REGION_EASTUS
+	if d.Region == templates.Region_REGION_UNSPECIFIED {
+		d.Region = templates.Region_REGION_EASTUS
 	}
 	s := b.GetSubscription()
 	n := b.GetVirtualNetwork()
@@ -231,12 +232,12 @@ func (b *Base) PulumiRunFunc() pulumi.RunFunc {
 			return err
 		}
 
-		var subnets []*SubnetArgs
+		var subnets []*templates.SubnetArgs
 		if len(b.VirtualNetwork.Subnets) > 0 {
 			subnets = append(subnets, b.VirtualNetwork.GetSubnets()...)
 		} else {
 			// default subnet settings if not specified in base struct
-			subnets = append(subnets, &SubnetArgs{
+			subnets = append(subnets, &templates.SubnetArgs{
 				Name:                "default",
 				NumberOfIpAddresses: 32,
 			})

@@ -1,17 +1,17 @@
 syntax = "proto3";
 
-package proto.broker;
+package broker.v1;
 
-import "proto/project/project.proto";
+import "broker/v1/project.proto";
 
 option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/broker";
 
 message CreateProjectRequest {
-  proto.project.Project project = 1;
+  Project project = 1;
 }
 
 message CreateProjectResponse {
-  proto.project.Project project = 1;
+  Project project = 1;
 }
 
 service BrokerService {

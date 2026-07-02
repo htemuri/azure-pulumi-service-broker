@@ -34,20 +34,11 @@ func main() {
 		// Region:                           os.Getenv("REGION"),
 		// ClientDevVnetIpAllocId:           os.Getenv("CLIENT_DEV_IPAM_RESOURCE_ID"),
 		// EntraIdAdminObjectIds:            []string{"b70d6761-f96e-4c7e-a352-b459099a3c09"}, // can point to a database list of admins
-		ProjectStreamName:                os.Getenv("PROJECT_STREAM_NAME"),
-		PulumiAzureADProviderVersion:     os.Getenv("PULUMI_AZUREAD_PROVIDER_VERSION"),
-		PulumiAzureNativeProviderVersion: os.Getenv("PULUMI_AZURENATIVE_PROVIDER_VERSION"),
+		ProjectStreamName: os.Getenv("PROJECT_STREAM_NAME"),
 	}
 	if config.ProjectStreamName == "" {
 		config.ProjectStreamName = "ProjectJobQueue"
 	}
-	if config.PulumiAzureADProviderVersion == "" {
-		config.PulumiAzureADProviderVersion = "v6.9.1"
-	}
-	if config.PulumiAzureNativeProviderVersion == "" {
-		config.PulumiAzureNativeProviderVersion = "v3.19.0"
-	}
-
 	logger.Println("initializing connection to nats server:", natsServer)
 	nc, err := nats.Connect(natsServer)
 	if err != nil {
@@ -97,17 +88,6 @@ func main() {
 				logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", err)
 			}
 		}
-
-		// if len(errs) > 0 {
-		// 	for _, e := range errs {
-		// 		logger.Print(e)
-		// 	}
-		// 	logger.Printf("sending project %s to failed deployment queue\n", project.Name)
-		// 	_, errPub := js.Publish(ctx, "failed", msg.Data())
-		// 	if errPub != nil {
-		// 		logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", errPub)
-		// 	}
-		// }
 	}); err != nil {
 		logger.Fatal("failed to consume messages from durable stream with error:", err)
 	}

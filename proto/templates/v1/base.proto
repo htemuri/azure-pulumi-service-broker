@@ -1,16 +1,16 @@
 syntax = "proto3";
 
-package proto.templates;
+package templates.v1;
 
-import "proto/templates/shared.proto";
+import "templates/v1/shared.proto";
 
 option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/templates";
 
 // Stack creating/selecting subscription and networking
-message Base {
-  DefaultParams default_params = 1;
-  SubscriptionArgs subscription = 2;
-  NetworkArgs virtual_network = 3;
+message BaseTemplateArgs {
+  DefaultParamsArgs default_params_args = 1;
+  SubscriptionArgs subscription_args = 2;
+  NetworkArgs virtual_network_args = 3;
 }
 
 message SubscriptionArgs {
@@ -20,8 +20,8 @@ message SubscriptionArgs {
 }
 
 message NetworkArgs {
-  IpamPoolPrefixAllocation ipam_pool_prefix_allocations = 1; // required (will error if not set)
-  repeated SubnetArgs subnets = 2;
+  IpamPoolPrefixAllocationArgs ipam_pool_prefix_allocations_args = 1; // required (will error if not set)
+  repeated SubnetArgs subnet_args = 2;
 }
 
 message SubnetArgs {
@@ -29,7 +29,7 @@ message SubnetArgs {
   int32 number_of_ip_addresses = 2;
 }
 
-message IpamPoolPrefixAllocation {
+message IpamPoolPrefixAllocationArgs {
   string ipam_pool_resource_id = 1;
   int32 number_of_ip_addresses = 2;
 }

@@ -7,12 +7,13 @@ import (
 	"slices"
 
 	"github.com/dominikbraun/graph"
+	templates "github.com/htemuri/azure-pulumi-service-broker/gen/go/templates/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 type Template interface {
-	Hash() TemplateOptions
+	Hash() templates.TemplateOptions
 	GetDefaultParams() *DefaultParams
 	Deploy(
 		ctx context.Context,
@@ -84,7 +85,7 @@ func GetValidDefaultParams(t Template) (*DefaultParams, error) {
 	return d, nil
 }
 
-func GetEnabledTemplates(templates []*Templates) ([]Template, error) {
+func getEnabledTemplates(templates []*templates.TemplateArgs) ([]Template, error) {
 	var out []Template
 	for _, t := range templates {
 		wrapper := t.GetTemplate()
@@ -137,7 +138,7 @@ func buildTemplateDAG(templates []Template) (graph.Graph[TemplateOptions, Templa
 }
 
 func GetTemplateInstallOrder(t []*Templates) ([]Template, error) {
-	convertedTemplates, err := GetEnabledTemplates(t)
+	convertedTemplates, err := getEnabledTemplates(t)
 	if err != nil {
 		return []Template{}, fmt.Errorf("failed to convert project templates input to template interface: %s", err)
 	}
@@ -145,7 +146,6 @@ func GetTemplateInstallOrder(t []*Templates) ([]Template, error) {
 	if err != nil {
 		return []Template{}, fmt.Errorf("failed to build directed acyclic graph of template dependencies: %s", err)
 	}
-	fmt.Println(g)
 	sortedTemplateOptions, err := graph.TopologicalSort(g)
 	slices.Reverse(sortedTemplateOptions) // topological sort does it in the opposite order we need
 	if err != nil {

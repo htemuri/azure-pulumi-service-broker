@@ -1,6 +1,10 @@
 package templates
 
-import "fmt"
+import (
+	"fmt"
+
+	templates "github.com/htemuri/azure-pulumi-service-broker/gen/go/templates/v1"
+)
 
 type SubnetResponse []struct {
 	AddressPrefixes           []string `json:"addressPrefixes"`
@@ -21,32 +25,32 @@ type SubnetResponse []struct {
 }
 
 // writing a custom shortstring functions because you can't serialize enums to custom strings in protobuf
-func (e Environment) ShortString() string {
+func (e templates.Environment) ShortString() string {
 	switch e {
-	case Environment_ENVIRONMENT_DEV:
+	case templates.Environment_ENVIRONMENT_DEV:
 		return "dev"
-	case Environment_ENVIRONMENT_TST:
+	case templates.Environment_ENVIRONMENT_TST:
 		return "tst"
-	case Environment_ENVIRONMENT_STG:
+	case templates.Environment_ENVIRONMENT_STG:
 		return "stg"
-	case Environment_ENVIRONMENT_PRD:
+	case templates.Environment_ENVIRONMENT_PRD:
 		return "prd"
 	default:
 		return "unspecified"
 	}
 }
-func (r Region) ShortString() string {
+func (r templates.Region) ShortString() string {
 	switch r {
-	case Region_REGION_EASTUS:
+	case templates.Region_REGION_EASTUS:
 		return "EASTUS"
-	case Region_REGION_EASTUS2:
+	case templates.Region_REGION_EASTUS2:
 		return "EASTUS2"
 	default:
 		return "unspecified"
 	}
 }
 
-func (c *PulumiProviderCredentialArgs) Validate() (bool, error) {
+func (c *templates.PulumiProviderCredentialArgs) Validate() (bool, error) {
 	if c.TenantId == "" {
 		return false, fmt.Errorf("credential missing tenant id")
 	}

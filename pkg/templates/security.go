@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	templates "github.com/htemuri/azure-pulumi-service-broker/gen/go/templates/v1"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
@@ -12,10 +13,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
 
-func NewSecurityTemplate(projectName string, environment Environment, region Region, keyvaultArgs *KeyVaultArgs, cred *PulumiProviderCredentialArgs) (*Security, error) {
-	s := Security{
-		DefaultParams: &DefaultParams{
-			Enabled:                  true,
+func NewSecurityTemplate(projectName string, environment templates.Environment, region templates.Region, keyvaultArgs *templates.KeyVaultArgs, cred *templates.PulumiProviderCredentialArgs) (*templates.Security, error) {
+	s := templates.Security{
+		DefaultParams: &templates.DefaultParams{
 			ProjectName:              projectName,
 			Environment:              environment,
 			Region:                   region,
@@ -25,33 +25,33 @@ func NewSecurityTemplate(projectName string, environment Environment, region Reg
 	}
 	err := s.Validate()
 	if err != nil {
-		return &Security{}, err
+		return &templates.Security{}, err
 	}
 
 	return &s, nil
 }
 
-func (s *Security) Hash() TemplateOptions {
-	return TemplateOptions_TEMPLATE_OPTIONS_SECURITY
+func (s *templates.Security) Hash() templates.TemplateOptions {
+	return templates.TemplateOptions_TEMPLATE_OPTIONS_SECURITY
 }
 
-func (s *Security) GetProjectName() string {
+func (s *templates.Security) GetProjectName() string {
 	return s.DefaultParams.GetProjectName()
 }
 
-func (s *Security) GetStackName() string {
+func (s *templates.Security) GetStackName() string {
 	return fmt.Sprintf("%s-security", s.GetDefaultParams().Environment.ShortString())
 }
 
-func (s *Security) GetProviders() []*ProviderVersion {
-	return []*ProviderVersion{{ProviderName: "azure-native", Version: "v3.19.0"}}
+func (s *templates.Security) GetProviders() []*templates.ProviderVersion {
+	return []*templates.ProviderVersion{{ProviderName: "azure-native", Version: "v3.19.0"}}
 }
 
-func (s *Security) GetDependsOn() []TemplateOptions {
-	return []TemplateOptions{TemplateOptions_TEMPLATE_OPTIONS_BASE}
+func (s *templates.Security) GetDependsOn() []templates.TemplateOptions {
+	return []templates.TemplateOptions{TemplateOptions_TEMPLATE_OPTIONS_BASE}
 }
 
-func (s *Security) Validate() error {
+func (s *templates.Security) Validate() error {
 	if s == nil {
 		return fmt.Errorf("security can't be nil")
 	}
@@ -59,8 +59,8 @@ func (s *Security) Validate() error {
 	if err != nil {
 		return err
 	}
-	if d.Region == Region_REGION_UNSPECIFIED {
-		d.Region = Region_REGION_EASTUS
+	if d.Region == templates.Region_REGION_UNSPECIFIED {
+		d.Region = templates.Region_REGION_EASTUS
 	}
 
 	if s.GetKeyVault() != nil && s.GetKeyVault().GetNetworkSettings() != nil {
@@ -77,7 +77,7 @@ func (s *Security) Validate() error {
 	return nil
 }
 
-func (s *Security) Deploy(ctx context.Context, cm map[string]any, autonamingConfig map[string]string) (map[string]any, error) {
+func (s *templates.Security) Deploy(ctx context.Context, cm map[string]any, autonamingConfig map[string]string) (map[string]any, error) {
 	stack, err := createOrSelectStack(s, ctx, autonamingConfig)
 	if err != nil {
 		return cm, err
@@ -121,7 +121,7 @@ func (s *Security) Deploy(ctx context.Context, cm map[string]any, autonamingConf
 	return cm, nil
 }
 
-func (s *Security) PulumiRunFunc() pulumi.RunFunc {
+func (s *templates.Security) PulumiRunFunc() pulumi.RunFunc {
 	return func(ctx *pulumi.Context) error {
 		conf := config.New(ctx, "")
 		if subscriptionId := conf.Get("subscriptionId"); subscriptionId != "" {

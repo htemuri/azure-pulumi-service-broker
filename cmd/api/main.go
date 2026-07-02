@@ -89,11 +89,11 @@ func main() {
 	// 	KeyVaultOptions:    &broker.KeyVaultOptions{Enabled: false},
 	// 	DataFactoryOptions: &broker.DataFactoryOptions{Enabled: false},
 	// }
-	_, err = templates.GetEnabledTemplates(project.Templates)
-	if err != nil {
-		logger.Print(err)
-		log.Default().Fatal(err)
-	}
+	// _, err = templates.GetEnabledTemplates(project.Templates)
+	// if err != nil {
+	// 	logger.Print(err)
+	// 	log.Default().Fatal(err)
+	// }
 
 	dataBytes, err := proto.Marshal(&project) // cant error from a generated protobuf go type
 	if err != nil {
