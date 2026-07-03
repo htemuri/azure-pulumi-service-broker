@@ -128,6 +128,23 @@ func (b *Base) Deploy(ctx context.Context, cm map[string]any, autonamingConfig m
 	if err != nil {
 		return cm, fmt.Errorf("failed to update stack: %v\n\n", err)
 	}
+	// subscriptionId, ok := res.Outputs["subscriptionId"].Value.(string)
+	// if !ok {
+	// 	return cm, fmt.Errorf("failed to get subscriptionId for base response: %s\n", err)
+	// }
+	// vnetId, ok := res.Outputs["vnetId"].Value.(string)
+	// if !ok {
+	// 	return cm, fmt.Errorf("failed to get vnetId for base response: %s\n", err)
+	// }
+	// subnets, ok := res.Outputs["subnets"].Value.([]string)
+	// if !ok {
+	// 	return cm, fmt.Errorf("failed to get subnets for base response: %s\n", err)
+	// }
+	// _ = BaseResponse{
+	// 	SubscriptionId: subscriptionId,
+	// 	VnetId:         vnetId,
+	// 	SubnetIds:      subnets,
+	// }
 	cm["subscriptionId"] = res.Outputs["subscriptionId"].Value
 	cm["vnetId"] = res.Outputs["vnetId"].Value
 	cm["subnets"] = res.Outputs["subnets"].Value

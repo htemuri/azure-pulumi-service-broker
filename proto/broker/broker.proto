@@ -11,7 +11,8 @@ message CreateProjectRequest {
 }
 
 message CreateProjectResponse {
-  proto.project.Project project = 1;
+  proto.project.ProjectResponse project_response = 1;
+  string error = 2;
 }
 
 service BrokerService {

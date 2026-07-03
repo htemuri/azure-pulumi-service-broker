@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/htemuri/azure-pulumi-service-broker/pkg/broker"
+	"github.com/htemuri/azure-pulumi-service-broker/pkg/templates"
 	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -19,33 +20,17 @@ func main() {
 	natsServer := nats.DefaultURL
 	ctx := context.Background()
 
-	err := godotenv.Load("/home/harristemuri/Projects/azure-pulumi-service-broker/.env")
+	err := godotenv.Load()
 	if err != nil {
 		logger.Fatal("error loading .env file:", err)
 	}
 
 	// TODO: Make this better - maybe add defaults as a method of the config class
 	config := Config{
-		// PulumiClientId:                   os.Getenv("PULUMI_SP_CLIENT_ID"),
-		// PulumiClientSecret:               os.Getenv("PULUMI_SP_CLIENT_SECRET"),
-		// TenantId:                         os.Getenv("TENANT_ID"),
-		// BillingScope:                     os.Getenv("BILLING_SCOPE"),
-		// ClientProjectManagementGroupId:   os.Getenv("CLIENT_PROJ_MGMT_GROUP_ID"),
-		// Region:                           os.Getenv("REGION"),
-		// ClientDevVnetIpAllocId:           os.Getenv("CLIENT_DEV_IPAM_RESOURCE_ID"),
-		// EntraIdAdminObjectIds:            []string{"b70d6761-f96e-4c7e-a352-b459099a3c09"}, // can point to a database list of admins
-		ProjectStreamName:                os.Getenv("PROJECT_STREAM_NAME"),
-		PulumiAzureADProviderVersion:     os.Getenv("PULUMI_AZUREAD_PROVIDER_VERSION"),
-		PulumiAzureNativeProviderVersion: os.Getenv("PULUMI_AZURENATIVE_PROVIDER_VERSION"),
+		ProjectStreamName: os.Getenv("PROJECT_STREAM_NAME"),
 	}
 	if config.ProjectStreamName == "" {
 		config.ProjectStreamName = "ProjectJobQueue"
-	}
-	if config.PulumiAzureADProviderVersion == "" {
-		config.PulumiAzureADProviderVersion = "v6.9.1"
-	}
-	if config.PulumiAzureNativeProviderVersion == "" {
-		config.PulumiAzureNativeProviderVersion = "v3.19.0"
 	}
 
 	logger.Println("initializing connection to nats server:", natsServer)
@@ -73,7 +58,7 @@ func main() {
 	}
 
 	if _, err := consumer.Consume(func(msg jetstream.Msg) {
-		if msg.Subject() == "failed" {
+		if msg.Subject() == "failed" || msg.Subject() == "success" {
 			return
 		}
 		msg.InProgress()
@@ -88,7 +73,7 @@ func main() {
 		msg.Ack()
 		logger.Printf("received a message from subject '%s' about project with name '%s'\n", msg.Subject(), project.Name)
 
-		err = nh.Handle()
+		responseMap, err := nh.Handle()
 		if err != nil {
 			logger.Printf("failed to deploy templates for project %s with error: %s", project.Name, err)
 			logger.Printf("sending project %s to failed deployment queue\n", project.Name)
@@ -96,23 +81,63 @@ func main() {
 			if err != nil {
 				logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", err)
 			}
+			return
 		}
 
-		// if len(errs) > 0 {
-		// 	for _, e := range errs {
-		// 		logger.Print(e)
-		// 	}
-		// 	logger.Printf("sending project %s to failed deployment queue\n", project.Name)
-		// 	_, errPub := js.Publish(ctx, "failed", msg.Data())
-		// 	if errPub != nil {
-		// 		logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", errPub)
-		// 	}
-		// }
+		subscriptionId, ok := responseMap["subscriptionId"].(string)
+		logger.Printf("responseMap: %v\n", responseMap)
+		if !ok {
+			logger.Println("failed to get subscriptionId for base response")
+			return
+		}
+		vnetId, ok := responseMap["vnetId"].(string)
+		if !ok {
+			logger.Println("failed to get vnetId for base response")
+			return
+		}
+		tr := []*templates.TemplatesResponse{{
+			Response: &templates.TemplatesResponse_BaseResponse{
+				BaseResponse: &templates.BaseResponse{
+					SubscriptionId: subscriptionId,
+					VnetId:         vnetId,
+				},
+			},
+		}}
+		projectResponse := &broker.ProjectResponse{
+			Name:              project.Name,
+			TemplateResponses: tr,
+		}
+
+		// send to nats successful subject
+		bytes, err := proto.Marshal(projectResponse)
+		if err != nil {
+			logger.Printf("failed to marshal project response: %s\n", err)
+			return
+		}
+		_, err = js.Publish(ctx, "success", bytes)
+		if err != nil {
+			logger.Printf("failed to publish response to nats success subject: %s\n", err)
+			return
+		}
 	}); err != nil {
 		logger.Fatal("failed to consume messages from durable stream with error:", err)
 	}
 
 	// keep waiting for nats messages
 	wg.Wait()
+
+	// ctx := context.Background()
+	// s, err := auto.UpsertRemoteStackGitSource(ctx, "htemuri/test-templating/git-auto", auto.GitRepo{
+	// 	URL:         "https://github.com/pulumi/examples.git",
+	// 	Branch:      "master",
+	// 	ProjectPath: "aws-go-s3-folder",
+	// })
+	// if err != nil {
+	// 	fmt.Println(err.Error())
+	// }
+	// _, err = s.Preview(ctx)
+	// if err != nil {
+	// 	fmt.Println(err.Error())
+	// }
 
 }

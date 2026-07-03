@@ -13,6 +13,11 @@ message Project {
   repeated proto.templates.Templates templates = 3;
 }
 
+message ProjectResponse {
+  string name = 1;
+  repeated proto.templates.TemplatesResponse template_responses = 2;
+}
+
 message UserPersonaEntry {
   RoleType role = 1;
   repeated User users = 2;

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 
@@ -8,12 +9,14 @@ import (
 	"github.com/htemuri/azure-pulumi-service-broker/pkg/templates"
 	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
+	"github.com/nats-io/nats.go/jetstream"
 	"google.golang.org/protobuf/proto"
 )
 
 func main() {
 	logger := log.New(os.Stdout, "[Broker API]: ", log.Ldate|log.Ltime|log.Lmsgprefix)
 	natsServer := nats.DefaultURL
+	ctx := context.Background()
 	err := godotenv.Load()
 	if err != nil {
 		logger.Fatal("error loading .env file:", err)
@@ -27,7 +30,7 @@ func main() {
 	defer nc.Close()
 
 	logger.Println("upgrading nats connection to jetstream")
-	js, err := nc.JetStream()
+	js, err := jetstream.New(nc)
 	if err != nil {
 		logger.Fatal("failed to upgrade nats connection to jetstream: ", err)
 	}
@@ -101,13 +104,41 @@ func main() {
 	}
 	// create/update the project stream
 
-	_, err = js.UpdateStream(&nats.StreamConfig{Name: "ProjectJobQueue", Description: "Stream to manage active jobs for projects", Subjects: []string{"create", "update", "delete", "failed"}})
+	_, err = js.UpdateStream(ctx, jetstream.StreamConfig{Name: "ProjectJobQueue", Description: "Stream to manage active jobs for projects", Subjects: []string{"create", "update", "delete", "failed", "success"}})
 	if err != nil {
 		logger.Fatal("failed to create 'ProjectJobQueue' stream with error: ", err)
 	}
-	_, err = js.Publish("create", dataBytes)
+	_, err = js.Publish(ctx, "create", dataBytes)
 	if err != nil {
 		logger.Println("failed to publish to subject 'create' with error: ", err)
 	}
+
+	// check success subject
+	// var wg sync.WaitGroup
+	// wg.Add(1)
+
+	// consumer, err := js.CreateOrUpdateConsumer(ctx, "ProjectJobQueue", jetstream.ConsumerConfig{
+	// 	Name: "broker_api", Durable: "broker_api",
+	// })
+	// if err != nil {
+	// 	logger.Fatalf("failed to create/update durable consumer against %s stream with error: %s\n", "ProjectJobQueue", err)
+	// }
+
+	// if _, err := consumer.Consume(func(msg jetstream.Msg) {
+	// 	if msg.Subject() == "success" {
+	// 		var pr broker.ProjectResponse
+	// 		err := proto.Unmarshal(msg.Data(), &pr)
+	// 		if err != nil {
+	// 			logger.Printf("failed to unmarshal projectResponse: %s\n", err)
+	// 			return
+	// 		}
+	// 		logger.Printf("Project Response: %v\n", &pr)
+	// 		msg.Ack()
+	// 	}
+	// }); err != nil {
+	// 	logger.Fatal("failed to consume messages from durable stream with error:", err)
+	// }
+
+	// wg.Wait()
 
 }

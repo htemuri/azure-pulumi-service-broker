@@ -11,6 +11,10 @@ message Storage {
   DefaultParams default_params = 1;
 }
 
+message StorageResponse {
+  string storage_account_id = 1;
+}
+
 message StorageAccount {
   optional bool disabled = 1; // enabled by default
   ResourceNetworkArgs network_settings = 2; // default public network disabled with no private endpoints

@@ -14,8 +14,14 @@ message Templates {
     templates.Security security = 2;
     templates.Storage storage = 3;
   }
-  // optional templates.Base base = 1;
-  // repeated Custom custom = 2;
+}
+
+message TemplatesResponse {
+  oneof response {
+    templates.BaseResponse base_response = 1;
+    // templates.SecurityResponse security_response = 2;
+    // templates.StorageResponse storage_response = 3;
+  }
 }
 
 enum TemplateOptions {

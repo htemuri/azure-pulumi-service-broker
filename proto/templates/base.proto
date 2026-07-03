@@ -13,6 +13,12 @@ message Base {
   NetworkArgs virtual_network = 3;
 }
 
+message BaseResponse {
+  string subscription_id = 1;
+  string vnet_id = 2;
+  repeated string subnet_ids = 3;
+}
+
 message SubscriptionArgs {
   string subscription_id = 1; // if not set, create a subscription using the env and project name in the format of "[{Environment}] Client Project: {ProjectName}"
   string billing_scope = 2;

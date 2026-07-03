@@ -12,6 +12,11 @@ message Security {
   KeyVaultArgs key_vault = 2;
 }
 
+message SecurityResponse {
+  string key_vault_id = 1;
+  string key_vault_urn = 2;
+}
+
 message KeyVaultArgs {
   bool disabled = 1; // enabled by default
   ResourceNetworkArgs network_settings = 2;
