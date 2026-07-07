@@ -1,121 +1,89 @@
 package templates
 
-// import (
-// 	"context"
-// 	"fmt"
-// 	"os"
+import (
+	"context"
+	"fmt"
 
-// 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
-// 	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
-// 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
-// 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-// )
+	"github.com/pulumi/pulumi/sdk/v3/go/auto"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+)
 
-// func NewStorageTemplate(projectName string, environment Environment, region Region, cred *PulumiProviderCredentialArgs) (*Storage, error) {
-// 	s := Storage{
-// 		DefaultParams: &DefaultParams{
-// 			Enabled:                  true,
-// 			ProjectName:              projectName,
-// 			Environment:              environment,
-// 			Region:                   region,
-// 			PulumiProviderCredential: cred,
-// 		},
-// 	}
-// 	err := s.Validate()
-// 	if err != nil {
-// 		return &Storage{}, err
-// 	}
+func (sr *StorageRequest) newTemplate() (Template, error) {
+	s := &Storage{
+		StackName:        fmt.Sprintf("%s-storage", sr.GetDefaultParams().GetEnvironment().ShortString()),
+		ProviderVersions: []*ProviderVersion{{ProviderName: "azure-native", Version: "v3.19.0"}},
+		DependsOn:        []TemplateOptions{TemplateOptions_TEMPLATE_OPTIONS_BASE},
+		Request:          sr,
+	}
+	err := s.validate()
+	if err != nil {
+		return &Storage{}, err
+	}
+	return s, nil
+}
 
-// 	return &s, nil
-// }
+func (s *Storage) hash() TemplateOptions {
+	return TemplateOptions_TEMPLATE_OPTIONS_STORAGE
+}
 
-// func (s *Storage) Hash() TemplateOptions {
-// 	return TemplateOptions_TEMPLATE_OPTIONS_STORAGE
-// }
+func (s *Storage) getDefaultParams() *DefaultParams {
+	return s.GetRequest().GetDefaultParams()
+}
 
-// func (s *Storage) GetProjectName() string {
-// 	return s.DefaultParams.GetProjectName()
-// }
+func (s *Storage) validate() error {
+	if s == nil {
+		return fmt.Errorf("Storage can't be nil")
+	}
+	d, err := getValidDefaultParams(s)
+	if err != nil {
+		return err
+	}
+	if d.Region == Region_REGION_UNSPECIFIED {
+		d.Region = Region_REGION_EASTUS
+	}
+	return nil
+}
 
-// func (s *Storage) GetStackName() string {
-// 	return fmt.Sprintf("%s-storage", s.GetDefaultParams().Environment.ShortString())
-// }
+func (s *Storage) Deploy(ctx context.Context, templateResponses []*TemplatesResponse, autonamingConfig map[string]string, debugOptions optup.Option, streamer optup.Option) (isTemplatesResponse_Response, error) {
+	var newResponse TemplatesResponse_Storage
+	stack, err := createOrSelectStack(ctx, s, autonamingConfig)
+	if err != nil {
+		return &newResponse, err
+	}
+	var baseResponse BaseResponse
+	for _, t := range templateResponses {
+		if t.GetBase() != nil {
+			baseResponse = *t.GetBase()
+		}
+	}
+	if baseResponse.GetSubscriptionId() == "" || baseResponse.GetVnetId() == "" {
+		return &newResponse, fmt.Errorf("missing base template response when trying to deploy security template")
+	}
+	// subnets, ok := cm["subnets"].(SubnetResponse)
+	// if !ok {
+	// 	return cm, fmt.Errorf("failed getting 'subnets' from cm")
+	// }
+	stack.SetConfig(ctx, "subscriptionId", auto.ConfigValue{Value: baseResponse.SubscriptionId})
+	stack.SetConfig(ctx, "vnetId", auto.ConfigValue{Value: baseResponse.VnetId})
 
-// func (s *Storage) GetProviders() []*ProviderVersion {
-// 	return []*ProviderVersion{{ProviderName: "azure-native", Version: "v3.19.0"}}
-// }
+	_, err = stack.Up(
+		ctx,
+		debugOptions,
+		streamer)
+	if err != nil {
+		return &newResponse, fmt.Errorf("failed to update stack: %v\n\n", err)
+	}
+	return &newResponse, nil
+}
 
-// func (s *Storage) GetDependsOn() []TemplateOptions {
-// 	return []TemplateOptions{TemplateOptions_TEMPLATE_OPTIONS_BASE, TemplateOptions_TEMPLATE_OPTIONS_SECURITY}
-// }
-
-// func (s *Storage) Validate() error {
-// 	if s == nil {
-// 		return fmt.Errorf("Storage can't be nil")
-// 	}
-// 	d, err := GetValidDefaultParams(s)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	if d.Region == Region_REGION_UNSPECIFIED {
-// 		d.Region = Region_REGION_EASTUS
-// 	}
-// 	return nil
-// }
-
-// func (s *Storage) Deploy(ctx context.Context, cm map[string]any, autonamingConfig map[string]string) (map[string]any, error) {
-// 	stack, err := createOrSelectStack(s, ctx, autonamingConfig)
-// 	if err != nil {
-// 		return cm, err
-// 	}
-// 	// extract config values
-// 	subId, ok := cm["subscriptionId"].(string)
-// 	if !ok {
-// 		return cm, fmt.Errorf("failed getting 'subscriptionId' from cm")
-// 	}
-// 	vnetId, ok := cm["vnetId"].(string)
-// 	if !ok {
-// 		return cm, fmt.Errorf("failed getting 'vnetId' from cm")
-// 	}
-// 	fmt.Println(cm["subnets"])
-// 	subnets, ok := cm["subnets"].(SubnetResponse)
-// 	if !ok {
-// 		return cm, fmt.Errorf("failed getting 'subnets' from cm")
-// 	}
-
-// 	stack.SetConfig(ctx, "subscriptionId", auto.ConfigValue{Value: subId})
-// 	stack.SetConfig(ctx, "vnetId", auto.ConfigValue{Value: vnetId})
-// 	stack.SetConfig(ctx, "subnetName", auto.ConfigValue{Value: subnets[0].Name})
-// 	stack.SetConfig(ctx, "subnetId", auto.ConfigValue{Value: subnets[0].ID})
-
-// 	// // 1 - 11 (least verbose to most verbose)
-// 	logLevel := uint(2)
-
-// 	debugLogging := optup.DebugLogging(debug.LoggingOptions{
-// 		LogToStdErr:   true,
-// 		LogLevel:      &logLevel,
-// 		FlowToPlugins: true,
-// 		Debug:         true,
-// 	})
-
-// 	streamer := optup.ProgressStreams(os.Stdout)
-// 	_, err = stack.Up(
-// 		ctx,
-// 		debugLogging,
-// 		streamer)
-// 	if err != nil {
-// 		return cm, fmt.Errorf("failed to update stack: %v\n\n", err)
-// 	}
-// 	return cm, nil
-// }
-
-// func (s *Storage) PulumiRunFunc() pulumi.RunFunc {
-// 	return func(ctx *pulumi.Context) error {
-// 		if subscriptionId, ok := ctx.GetConfig("subscriptionId"); ok {
-// 			ctx.Log.Info(fmt.Sprintf("got subscriptionId: %s", subscriptionId), nil)
-// 		} else {
-// 			ctx.Log.Info("failed to get subscriptionId", nil)
-// 		}
-// 		return nil
-// 	}
-// }
+func (s *Storage) pulumiRunFunc() pulumi.RunFunc {
+	return func(ctx *pulumi.Context) error {
+		if subscriptionId, ok := ctx.GetConfig("subscriptionId"); ok {
+			ctx.Log.Info(fmt.Sprintf("got subscriptionId: %s", subscriptionId), nil)
+		} else {
+			ctx.Log.Info("failed to get subscriptionId", nil)
+		}
+		return nil
+	}
+}

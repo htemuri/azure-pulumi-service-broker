@@ -9,7 +9,7 @@ option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/broker";
 
 message CreateProjectRequest {
   proto.project.Project project = 1;
-  repeated proto.templates.Templates templates = 2;
+  repeated proto.templates.TemplatesRequest template_requests = 2;
 }
 
 message CreateProjectResponse {

@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/htemuri/azure-pulumi-service-broker/pkg/broker"
+	"github.com/htemuri/azure-pulumi-service-broker/pkg/project"
 	"github.com/htemuri/azure-pulumi-service-broker/pkg/templates"
 	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
@@ -46,27 +47,28 @@ func main() {
 		ClientId:     os.Getenv("PULUMI_SP_CLIENT_ID"),
 		ClientSecret: os.Getenv("PULUMI_SP_CLIENT_SECRET"),
 	}
-	base, err := templates.NewBaseTemplate(
-		projectName, env, reg, &templates.SubscriptionArgs{
+	defaultArgs := &templates.DefaultParams{
+		ProjectName:              projectName,
+		Environment:              env,
+		Region:                   reg,
+		PulumiProviderCredential: pulumiCred,
+	}
+	base := &templates.BaseRequest{
+		DefaultParams: defaultArgs,
+		Subscription: &templates.SubscriptionArgs{
 			SubscriptionId: "23b1b9f5-6b57-4c00-87d7-7b49d4d88c6c",
 			// BillingScope:      os.Getenv("BILLING_SCOPE"),
 			// ManagementGroupId: os.Getenv("CLIENT_PROJ_MGMT_GROUP_ID"),
-		}, &templates.NetworkArgs{
+		},
+		VirtualNetwork: &templates.NetworkArgs{
 			IpamPoolPrefixAllocations: &templates.IpamPoolPrefixAllocation{
 				IpamPoolResourceId:  os.Getenv("CLIENT_PRD_IPAM_RESOURCE_ID"),
 				NumberOfIpAddresses: 160},
-			Subnets: []*templates.SubnetArgs{{Name: "default", NumberOfIpAddresses: 48}, {Name: "second", NumberOfIpAddresses: 32}},
-		},
-		pulumiCred,
-	)
-	if err != nil {
-		logger.Printf("failed to create base template: %s", err)
+			Subnets: []*templates.SubnetArgs{{Name: "default", NumberOfIpAddresses: 48}, {Name: "second", NumberOfIpAddresses: 32}}},
 	}
-	sec, err := templates.NewSecurityTemplate(
-		projectName, env, reg, &templates.KeyVaultArgs{}, pulumiCred,
-	)
-	if err != nil {
-		logger.Printf("failed to create security template: %s", err)
+	sec := &templates.SecurityRequest{
+		DefaultParams: defaultArgs,
+		KeyVault:      &templates.KeyVaultArgs{},
 	}
 	// stor, err := templates.NewStorageTemplate(
 	// 	projectName, env, reg, pulumiCred,
@@ -75,13 +77,13 @@ func main() {
 	// 	logger.Printf("failed to create storage template: %s", err)
 	// }
 	req := broker.CreateProjectRequest{
-		Project: &broker.Project{
+		Project: &project.Project{
 			Name:        projectName,
 			Environment: env,
 		},
-		Templates: []*templates.Templates{
-			{Template: &templates.Templates_Base{Base: base}},
-			{Template: &templates.Templates_Security{Security: sec}},
+		TemplateRequests: []*templates.TemplatesRequest{
+			{Request: &templates.TemplatesRequest_Base{Base: base}},
+			{Request: &templates.TemplatesRequest_Security{Security: sec}},
 			// {Template: &templates.Templates_Storage{Storage: stor}},
 		},
 	}
@@ -138,7 +140,7 @@ func main() {
 
 	if _, err := consumer.Consume(func(msg jetstream.Msg) {
 		if msg.Subject() == "success" {
-			var pr broker.ProjectResponse
+			var pr broker.CreateProjectResponse
 			err := proto.Unmarshal(msg.Data(), &pr)
 			if err != nil {
 				logger.Printf("failed to unmarshal projectResponse: %s\n", err)

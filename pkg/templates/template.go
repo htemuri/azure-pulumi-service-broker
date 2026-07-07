@@ -8,41 +8,60 @@ import (
 
 	"github.com/dominikbraun/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 type Template interface {
 	hash() TemplateOptions
 	getDefaultParams() *DefaultParams
+	GetStackName() string
 	Deploy(
 		ctx context.Context,
 		templateResponses []*TemplatesResponse,
 		autonamingConfig map[string]string,
+		debugOptions optup.Option,
+		streamer optup.Option,
 	) (isTemplatesResponse_Response, error)
-	getProjectName() string
-	getStackName() string
-	getProviders() []*ProviderVersion
-	getDependsOn() []TemplateOptions
+	GetProviderVersions() []*ProviderVersion
+	GetDependsOn() []TemplateOptions
 	pulumiRunFunc() pulumi.RunFunc
 	validate() error
 }
 
-// type TemplateResponse interface {
-// }
+type TemplateRequest interface {
+	newTemplate() (Template, error)
+}
 
-func createOrSelectStack(t Template, ctx context.Context, autonamingConfig map[string]string) (auto.Stack, error) {
+func (tr *TemplatesRequest) NewTemplate() (Template, error) {
+	wrapper := tr.GetRequest()
+	if wrapper == nil {
+		return nil, fmt.Errorf("template request entry has no oneof case set")
+	}
+	inner, err := unwrapTemplateRequestOneof(wrapper)
+	if err != nil {
+		return nil, err
+	}
+	req, ok := inner.(TemplateRequest)
+	if !ok {
+		return nil, fmt.Errorf("type %T does not implement TemplateRequest", inner)
+	}
+	return req.newTemplate()
+}
+
+func createOrSelectStack(ctx context.Context, t Template, autonamingConfig map[string]string) (auto.Stack, error) {
 	err := t.validate()
 	if err != nil {
 		return auto.Stack{}, fmt.Errorf("%T template validation failed: %s", t, err)
 	}
 
-	projectName := fmt.Sprintf("client-project-%s", t.getProjectName())
-	s, err := auto.UpsertStackInlineSource(ctx, t.getStackName(), projectName, t.pulumiRunFunc())
+	projectName := fmt.Sprintf("client-project-%s", t.getDefaultParams().GetProjectName())
+	s, err := auto.UpsertStackInlineSource(ctx, t.GetStackName(), projectName, t.pulumiRunFunc())
 	if err != nil {
 		return auto.Stack{}, fmt.Errorf("failed to create/update stack with error: %s", err)
 	}
 	workspace := s.Workspace()
-	for _, p := range t.getProviders() {
+	for _, p := range t.GetProviderVersions() {
 		err := workspace.InstallPlugin(ctx, p.GetProviderName(), p.GetVersion())
 		if err != nil {
 			return auto.Stack{}, fmt.Errorf("failed to install program plugins: %v\n", err)
@@ -87,28 +106,7 @@ func getValidDefaultParams(t Template) (*DefaultParams, error) {
 	return d, nil
 }
 
-func getEnabledTemplates(templates []*Templates) ([]Template, error) {
-	var out []Template
-	for _, t := range templates {
-		wrapper := t.GetTemplate()
-		if wrapper == nil {
-			return nil, fmt.Errorf("template entry has no oneof case set")
-		}
-		inner, err := unwrapOneof(wrapper)
-		if err != nil {
-			return nil, err
-		}
-		tmpl, ok := inner.(Template)
-		if !ok {
-			return nil, fmt.Errorf("type %T does not implement Template", inner)
-		}
-		out = append(out, tmpl)
-	}
-	return out, nil
-}
-
-// extracts the single field out of Templates oneof wrapper struct
-func unwrapOneof(wrapper isTemplates_Template) (any, error) {
+func unwrapTemplateRequestOneof(wrapper isTemplatesRequest_Request) (any, error) {
 	v := reflect.ValueOf(wrapper)
 	if v.Kind() != reflect.Pointer || v.IsNil() || v.Elem().Kind() != reflect.Struct {
 		return nil, fmt.Errorf("unexpected oneof wrapper type %T", wrapper)
@@ -128,7 +126,7 @@ func buildTemplateDAG(templates []Template) (graph.Graph[TemplateOptions, Templa
 		if err != nil {
 			return nil, fmt.Errorf("failed to add vertex: %s", err)
 		}
-		for _, d := range t.getDependsOn() {
+		for _, d := range t.GetDependsOn() {
 			err := g.AddEdge(t.hash(), d)
 			if err != nil {
 				return nil, fmt.Errorf("failed to add edge %s", err.Error())
@@ -139,12 +137,8 @@ func buildTemplateDAG(templates []Template) (graph.Graph[TemplateOptions, Templa
 	return g, nil
 }
 
-func GetTemplateInstallOrder(t []*Templates) ([]Template, error) {
-	convertedTemplates, err := getEnabledTemplates(t)
-	if err != nil {
-		return []Template{}, fmt.Errorf("failed to convert project templates input to template interface: %s", err)
-	}
-	g, err := buildTemplateDAG(convertedTemplates)
+func GetTemplateInstallOrder(t []Template) ([]Template, error) {
+	g, err := buildTemplateDAG(t)
 	if err != nil {
 		return []Template{}, fmt.Errorf("failed to build directed acyclic graph of template dependencies: %s", err)
 	}

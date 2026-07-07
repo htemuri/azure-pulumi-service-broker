@@ -69,12 +69,11 @@ func main() {
 			return
 		}
 		project := createProjectRequest.GetProject()
-		nh := NewNatsHandler(context.Background(), project, createProjectRequest.GetTemplates())
+		nh := NewNatsHandler(context.Background(), project, createProjectRequest.GetTemplateRequests())
 		msg.Ack()
 		logger.Printf("received a message from subject '%s' about project with name '%s'\n", msg.Subject(), project.Name)
 
 		templateResponses, err := nh.Handle()
-		logger.Printf("passed handle")
 		if err != nil {
 			logger.Printf("failed to deploy templates for project %s with error: %s", project.Name, err)
 			logger.Printf("sending project %s to failed deployment queue\n", project.Name)
@@ -100,7 +99,6 @@ func main() {
 			logger.Printf("failed to publish response to nats success subject: %s\n", err)
 			return
 		}
-		logger.Printf("success")
 	}); err != nil {
 		logger.Fatal("failed to consume messages from durable stream with error:", err)
 	}

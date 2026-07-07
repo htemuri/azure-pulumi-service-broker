@@ -3,7 +3,6 @@ package templates
 import (
 	"context"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
 
@@ -16,45 +15,26 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-func NewBaseTemplate(projectName string, environment Environment, region Region, subscriptionArgs *SubscriptionArgs, networkArgs *NetworkArgs, cred *PulumiProviderCredentialArgs) (*Base, error) {
-	b := Base{
-		Request: &BaseRequest{
-			DefaultParams: &DefaultParams{
-				Enabled:                  true,
-				ProjectName:              projectName,
-				Environment:              environment,
-				Region:                   region,
-				PulumiProviderCredential: cred,
-			},
-			Subscription:   subscriptionArgs,
-			VirtualNetwork: networkArgs,
-		},
+func (br *BaseRequest) newTemplate() (Template, error) {
+	b := &Base{
+		StackName:        fmt.Sprintf("%s-base", br.GetDefaultParams().GetEnvironment().ShortString()),
+		ProviderVersions: []*ProviderVersion{{ProviderName: "azure-native", Version: "v3.19.0"}},
+		DependsOn:        []TemplateOptions{},
+		Request:          br,
 	}
 	err := b.validate()
 	if err != nil {
 		return &Base{}, err
 	}
-	return &b, nil
+	return b, nil
 }
 
 func (b *Base) hash() TemplateOptions {
 	return TemplateOptions_TEMPLATE_OPTIONS_BASE
 }
 
-func (b *Base) getProjectName() string {
-	return b.GetRequest().GetDefaultParams().GetProjectName()
-}
-
-func (b *Base) getStackName() string {
-	return fmt.Sprintf("%s-base", b.GetRequest().GetDefaultParams().Environment.ShortString())
-}
-
-func (b *Base) getProviders() []*ProviderVersion {
-	return []*ProviderVersion{{ProviderName: "azure-native", Version: "v3.19.0"}}
-}
-
-func (b *Base) getDependsOn() []TemplateOptions {
-	return []TemplateOptions{}
+func (b *Base) getDefaultParams() *DefaultParams {
+	return b.GetRequest().GetDefaultParams()
 }
 
 func (b *Base) validate() error {
@@ -108,26 +88,15 @@ func (b *Base) validate() error {
 	return nil
 }
 
-func (b *Base) Deploy(ctx context.Context, templateResponses []*TemplatesResponse, autonamingConfig map[string]string) (isTemplatesResponse_Response, error) {
+func (b *Base) Deploy(ctx context.Context, templateResponses []*TemplatesResponse, autonamingConfig map[string]string, debugOptions optup.Option, streamer optup.Option) (isTemplatesResponse_Response, error) {
 	var newResponse TemplatesResponse_Base
-	s, err := createOrSelectStack(b, ctx, autonamingConfig)
+	s, err := createOrSelectStack(ctx, b, autonamingConfig)
 	if err != nil {
 		return &newResponse, err
 	}
-	// // 1 - 11 (least verbose to most verbose)
-	// logLevel := uint(2)
-
-	// debugLogging := optup.DebugLogging(debug.LoggingOptions{
-	// 	LogToStdErr:   true,
-	// 	LogLevel:      &logLevel,
-	// 	FlowToPlugins: true,
-	// 	Debug:         true,
-	// })
-
-	streamer := optup.ProgressStreams(os.Stdout)
 	res, err := s.Up(
 		ctx,
-		// debugLogging,
+		debugOptions,
 		streamer)
 	if err != nil {
 		return &newResponse, fmt.Errorf("failed to update stack: %v\n\n", err)
@@ -151,19 +120,11 @@ func (b *Base) Deploy(ctx context.Context, templateResponses []*TemplatesRespons
 			VnetId:         vnetId,
 		},
 	}, nil
-	// newResponse.Base.SubscriptionId = subscriptionId
-	// newResponse.Base.VnetId = vnetId
-
-	// return &newResponse, nil
-}
-
-func (b *Base) getDefaultParams() *DefaultParams {
-	return b.GetRequest().GetDefaultParams()
 }
 
 func (b *Base) pulumiRunFunc() pulumi.RunFunc {
 	return func(ctx *pulumi.Context) error {
-		defaultParams := b.GetRequest().GetDefaultParams()
+		defaultParams := b.getDefaultParams()
 		subscriptionArgs := b.GetRequest().GetSubscription()
 		virtualNetworkArgs := b.GetRequest().GetVirtualNetwork()
 		projectName := defaultParams.GetProjectName()

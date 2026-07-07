@@ -4,6 +4,7 @@ package proto.templates;
 
 import "proto/templates/base.proto";
 import "proto/templates/security.proto";
+import "proto/templates/shared.proto";
 import "proto/templates/storage.proto";
 
 option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/templates";
@@ -16,13 +17,13 @@ message Templates {
   }
 }
 
-// message TemplatesRequest {
-//   oneof request {
-//     templates.BaseRequest base = 1;
-//     // templates.SecurityRequest security = 2;
-//     // templates.StorageRequest storage = 3;
-//   }
-// }
+message TemplatesRequest {
+  oneof request {
+    templates.BaseRequest base = 1;
+    templates.SecurityRequest security = 2;
+    templates.StorageRequest storage = 3;
+  }
+}
 
 message TemplatesResponse {
   Status status = 1;
@@ -32,17 +33,4 @@ message TemplatesResponse {
     templates.SecurityResponse security = 4;
     templates.StorageResponse storage = 5;
   }
-}
-
-enum Status {
-  STATUS_UNSPECIFIED = 0;
-  STATUS_SUCCESS = 1;
-  STATUS_ERROR = 2;
-}
-
-enum TemplateOptions {
-  TEMPLATE_OPTIONS_UNSPECIFIED = 0;
-  TEMPLATE_OPTIONS_BASE = 1;
-  TEMPLATE_OPTIONS_SECURITY = 2;
-  TEMPLATE_OPTIONS_STORAGE = 3;
 }

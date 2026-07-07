@@ -5,7 +5,7 @@ package proto.project;
 import "proto/templates/shared.proto";
 import "proto/templates/template.proto";
 
-option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/broker";
+option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/project";
 
 message Project {
   string name = 1;

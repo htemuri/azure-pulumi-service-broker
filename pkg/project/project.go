@@ -1,4 +1,4 @@
-package broker
+package project
 
 import (
 	reflect "reflect"
@@ -65,7 +65,7 @@ type PrivateEndpointPulumiExport struct {
 	DnsZoneName pulumi.Input
 }
 
-var privateEndpointExportType = reflect.TypeOf((*map[string]any)(nil)).Elem()
+var privateEndpointExportType = reflect.TypeFor[map[string]any]()
 
 func (PrivateEndpointPulumiExport) ElementType() reflect.Type {
 	return privateEndpointExportType
