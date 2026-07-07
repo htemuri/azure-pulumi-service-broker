@@ -9,31 +9,40 @@ import (
 )
 
 type NatsHandler struct {
-	ctx     context.Context
-	cm      map[string]any
-	project *broker.Project
+	ctx              context.Context
+	project          *broker.Project
+	templateRequests []*templates.Templates
 }
 
-func NewNatsHandler(ctx context.Context, project *broker.Project) *NatsHandler {
+func NewNatsHandler(ctx context.Context, project *broker.Project, templateRequests []*templates.Templates) *NatsHandler {
 	return &NatsHandler{
-		ctx:     ctx,
-		cm:      map[string]any{},
-		project: project,
+		ctx:              ctx,
+		project:          project,
+		templateRequests: templateRequests,
 	}
 }
 
-func (nh *NatsHandler) Handle() (map[string]any, error) {
-	templates, err := templates.GetTemplateInstallOrder(nh.project.Templates)
+func (nh *NatsHandler) Handle() ([]*templates.TemplatesResponse, error) {
+	var responses []*templates.TemplatesResponse
+	_templates, err := templates.GetTemplateInstallOrder(nh.templateRequests)
+	// logger.Println("templates to deploy", _templates)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get template install order: %s", err)
+		return responses, fmt.Errorf("failed to get template install order: %s", err)
 	}
-	for _, t := range templates {
+	for _, t := range _templates {
 		logger.Printf("deploying %T template...", t)
-		cm, err := t.Deploy(nh.ctx, nh.cm, autonamingConfig)
+		res, err := t.Deploy(nh.ctx, responses, autonamingConfig)
 		if err != nil {
-			return nil, fmt.Errorf("failed deploying template: %s", err)
+			responses = append(responses, &templates.TemplatesResponse{
+				Status: templates.Status_STATUS_ERROR,
+				Error:  fmt.Sprintf("failed deploying template: %s", err),
+			})
+			return responses, fmt.Errorf("failed deploying template: %s", err)
 		}
-		nh.cm = cm
+		responses = append(responses, &templates.TemplatesResponse{
+			Status:   templates.Status_STATUS_SUCCESS,
+			Response: res,
+		})
 	}
-	return nh.cm, nil
+	return responses, nil
 }

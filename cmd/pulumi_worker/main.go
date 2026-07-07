@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"github.com/htemuri/azure-pulumi-service-broker/pkg/broker"
-	"github.com/htemuri/azure-pulumi-service-broker/pkg/templates"
 	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -62,18 +61,20 @@ func main() {
 			return
 		}
 		msg.InProgress()
-		var project broker.Project
-		err = proto.Unmarshal(msg.Data(), &project)
+		var createProjectRequest broker.CreateProjectRequest
+		err = proto.Unmarshal(msg.Data(), &createProjectRequest)
 		if err != nil {
 			logger.Printf("failed to unmarshal message from subject '%s' with error: \n%s", msg.Subject(), err)
 			msg.Nak()
 			return
 		}
-		nh := NewNatsHandler(context.Background(), &project)
+		project := createProjectRequest.GetProject()
+		nh := NewNatsHandler(context.Background(), project, createProjectRequest.GetTemplates())
 		msg.Ack()
 		logger.Printf("received a message from subject '%s' about project with name '%s'\n", msg.Subject(), project.Name)
 
-		responseMap, err := nh.Handle()
+		templateResponses, err := nh.Handle()
+		logger.Printf("passed handle")
 		if err != nil {
 			logger.Printf("failed to deploy templates for project %s with error: %s", project.Name, err)
 			logger.Printf("sending project %s to failed deployment queue\n", project.Name)
@@ -83,33 +84,13 @@ func main() {
 			}
 			return
 		}
-
-		subscriptionId, ok := responseMap["subscriptionId"].(string)
-		logger.Printf("responseMap: %v\n", responseMap)
-		if !ok {
-			logger.Println("failed to get subscriptionId for base response")
-			return
-		}
-		vnetId, ok := responseMap["vnetId"].(string)
-		if !ok {
-			logger.Println("failed to get vnetId for base response")
-			return
-		}
-		tr := []*templates.TemplatesResponse{{
-			Response: &templates.TemplatesResponse_BaseResponse{
-				BaseResponse: &templates.BaseResponse{
-					SubscriptionId: subscriptionId,
-					VnetId:         vnetId,
-				},
-			},
-		}}
-		projectResponse := &broker.ProjectResponse{
+		createProjectResponse := &broker.CreateProjectResponse{
 			Name:              project.Name,
-			TemplateResponses: tr,
+			TemplateResponses: templateResponses,
 		}
 
 		// send to nats successful subject
-		bytes, err := proto.Marshal(projectResponse)
+		bytes, err := proto.Marshal(createProjectResponse)
 		if err != nil {
 			logger.Printf("failed to marshal project response: %s\n", err)
 			return
@@ -119,6 +100,7 @@ func main() {
 			logger.Printf("failed to publish response to nats success subject: %s\n", err)
 			return
 		}
+		logger.Printf("success")
 	}); err != nil {
 		logger.Fatal("failed to consume messages from durable stream with error:", err)
 	}

@@ -8,6 +8,11 @@ option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/template
 
 // stack for akvs and other resource types that are security related ...
 message Security {
+  SecurityRequest request = 1;
+  SecurityResponse response = 2;
+}
+
+message SecurityRequest {
   DefaultParams default_params = 1;
   KeyVaultArgs key_vault = 2;
 }

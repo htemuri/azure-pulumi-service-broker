@@ -16,12 +16,28 @@ message Templates {
   }
 }
 
+// message TemplatesRequest {
+//   oneof request {
+//     templates.BaseRequest base = 1;
+//     // templates.SecurityRequest security = 2;
+//     // templates.StorageRequest storage = 3;
+//   }
+// }
+
 message TemplatesResponse {
+  Status status = 1;
+  string error = 2;
   oneof response {
-    templates.BaseResponse base_response = 1;
-    // templates.SecurityResponse security_response = 2;
-    // templates.StorageResponse storage_response = 3;
+    templates.BaseResponse base = 3;
+    templates.SecurityResponse security = 4;
+    templates.StorageResponse storage = 5;
   }
+}
+
+enum Status {
+  STATUS_UNSPECIFIED = 0;
+  STATUS_SUCCESS = 1;
+  STATUS_ERROR = 2;
 }
 
 enum TemplateOptions {

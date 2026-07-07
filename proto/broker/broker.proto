@@ -3,16 +3,19 @@ syntax = "proto3";
 package proto.broker;
 
 import "proto/project/project.proto";
+import "proto/templates/template.proto";
 
 option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/broker";
 
 message CreateProjectRequest {
   proto.project.Project project = 1;
+  repeated proto.templates.Templates templates = 2;
 }
 
 message CreateProjectResponse {
-  proto.project.ProjectResponse project_response = 1;
-  string error = 2;
+  string name = 1;
+  repeated proto.templates.TemplatesResponse template_responses = 2;
+  string error = 3;
 }
 
 service BrokerService {

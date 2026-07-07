@@ -14,16 +14,18 @@ import (
 
 func NewSecurityTemplate(projectName string, environment Environment, region Region, keyvaultArgs *KeyVaultArgs, cred *PulumiProviderCredentialArgs) (*Security, error) {
 	s := Security{
-		DefaultParams: &DefaultParams{
-			Enabled:                  true,
-			ProjectName:              projectName,
-			Environment:              environment,
-			Region:                   region,
-			PulumiProviderCredential: cred,
+		Request: &SecurityRequest{
+			DefaultParams: &DefaultParams{
+				Enabled:                  true,
+				ProjectName:              projectName,
+				Environment:              environment,
+				Region:                   region,
+				PulumiProviderCredential: cred,
+			},
+			KeyVault: keyvaultArgs,
 		},
-		KeyVault: keyvaultArgs,
 	}
-	err := s.Validate()
+	err := s.validate()
 	if err != nil {
 		return &Security{}, err
 	}
@@ -31,31 +33,35 @@ func NewSecurityTemplate(projectName string, environment Environment, region Reg
 	return &s, nil
 }
 
-func (s *Security) Hash() TemplateOptions {
+func (s *Security) hash() TemplateOptions {
 	return TemplateOptions_TEMPLATE_OPTIONS_SECURITY
 }
 
-func (s *Security) GetProjectName() string {
-	return s.DefaultParams.GetProjectName()
+func (s *Security) getProjectName() string {
+	return s.GetRequest().GetDefaultParams().GetProjectName()
 }
 
-func (s *Security) GetStackName() string {
-	return fmt.Sprintf("%s-security", s.GetDefaultParams().Environment.ShortString())
+func (s *Security) getDefaultParams() *DefaultParams {
+	return s.GetRequest().GetDefaultParams()
 }
 
-func (s *Security) GetProviders() []*ProviderVersion {
+func (s *Security) getStackName() string {
+	return fmt.Sprintf("%s-security", s.GetRequest().GetDefaultParams().Environment.ShortString())
+}
+
+func (s *Security) getProviders() []*ProviderVersion {
 	return []*ProviderVersion{{ProviderName: "azure-native", Version: "v3.19.0"}}
 }
 
-func (s *Security) GetDependsOn() []TemplateOptions {
+func (s *Security) getDependsOn() []TemplateOptions {
 	return []TemplateOptions{TemplateOptions_TEMPLATE_OPTIONS_BASE}
 }
 
-func (s *Security) Validate() error {
+func (s *Security) validate() error {
 	if s == nil {
 		return fmt.Errorf("security can't be nil")
 	}
-	d, err := GetValidDefaultParams(s)
+	d, err := getValidDefaultParams(s)
 	if err != nil {
 		return err
 	}
@@ -63,8 +69,9 @@ func (s *Security) Validate() error {
 		d.Region = Region_REGION_EASTUS
 	}
 
-	if s.GetKeyVault() != nil && s.GetKeyVault().GetNetworkSettings() != nil {
-		pa := s.KeyVault.NetworkSettings.GetPrivateEndpoint()
+	keyvault := s.GetRequest().GetKeyVault()
+	if keyvault != nil && keyvault.GetNetworkSettings() != nil {
+		pa := keyvault.GetNetworkSettings().GetPrivateEndpoint()
 		// if private endpoint settings are specified
 		if pa != nil && pa.Enabled == true {
 			for _, r := range pa.SubResources {
@@ -77,26 +84,27 @@ func (s *Security) Validate() error {
 	return nil
 }
 
-func (s *Security) Deploy(ctx context.Context, cm map[string]any, autonamingConfig map[string]string) (map[string]any, error) {
+func (s *Security) Deploy(ctx context.Context, templateResponses []*TemplatesResponse, autonamingConfig map[string]string) (isTemplatesResponse_Response, error) {
+	var newResponse TemplatesResponse_Security
 	stack, err := createOrSelectStack(s, ctx, autonamingConfig)
 	if err != nil {
-		return cm, err
+		return &newResponse, err
 	}
-	// extract config values
-	subId, ok := cm["subscriptionId"].(string)
-	if !ok {
-		return cm, fmt.Errorf("failed getting 'subscriptionId' from cm")
+	var baseResponse BaseResponse
+	for _, t := range templateResponses {
+		if t.GetBase() != nil {
+			baseResponse = *t.GetBase()
+		}
 	}
-	vnetId, ok := cm["vnetId"].(string)
-	if !ok {
-		return cm, fmt.Errorf("failed getting 'vnetId' from cm")
+	if baseResponse.GetSubscriptionId() == "" || baseResponse.GetVnetId() == "" {
+		return &newResponse, fmt.Errorf("missing base template response when trying to deploy security template")
 	}
 	// subnets, ok := cm["subnets"].(SubnetResponse)
 	// if !ok {
 	// 	return cm, fmt.Errorf("failed getting 'subnets' from cm")
 	// }
-	stack.SetConfig(ctx, "subscriptionId", auto.ConfigValue{Value: subId})
-	stack.SetConfig(ctx, "vnetId", auto.ConfigValue{Value: vnetId})
+	stack.SetConfig(ctx, "subscriptionId", auto.ConfigValue{Value: baseResponse.SubscriptionId})
+	stack.SetConfig(ctx, "vnetId", auto.ConfigValue{Value: baseResponse.VnetId})
 	// stack.SetConfig(ctx, "subnetName", auto.ConfigValue{Value: subnets[0].Name})
 	// stack.SetConfig(ctx, "subnetId", auto.ConfigValue{Value: subnets[0].ID})
 
@@ -116,12 +124,12 @@ func (s *Security) Deploy(ctx context.Context, cm map[string]any, autonamingConf
 		debugLogging,
 		streamer)
 	if err != nil {
-		return cm, fmt.Errorf("failed to update stack: %v\n\n", err)
+		return &newResponse, fmt.Errorf("failed to update stack: %v\n\n", err)
 	}
-	return cm, nil
+	return &newResponse, nil
 }
 
-func (s *Security) PulumiRunFunc() pulumi.RunFunc {
+func (s *Security) pulumiRunFunc() pulumi.RunFunc {
 	return func(ctx *pulumi.Context) error {
 		conf := config.New(ctx, "")
 		if subscriptionId := conf.Get("subscriptionId"); subscriptionId != "" {

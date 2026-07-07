@@ -12,40 +12,43 @@ import (
 )
 
 type Template interface {
-	Hash() TemplateOptions
-	GetDefaultParams() *DefaultParams
+	hash() TemplateOptions
+	getDefaultParams() *DefaultParams
 	Deploy(
 		ctx context.Context,
-		cm map[string]any,
+		templateResponses []*TemplatesResponse,
 		autonamingConfig map[string]string,
-	) (map[string]any, error)
-	GetProjectName() string
-	GetStackName() string
-	GetProviders() []*ProviderVersion
-	GetDependsOn() []TemplateOptions
-	PulumiRunFunc() pulumi.RunFunc
-	Validate() error
+	) (isTemplatesResponse_Response, error)
+	getProjectName() string
+	getStackName() string
+	getProviders() []*ProviderVersion
+	getDependsOn() []TemplateOptions
+	pulumiRunFunc() pulumi.RunFunc
+	validate() error
 }
 
+// type TemplateResponse interface {
+// }
+
 func createOrSelectStack(t Template, ctx context.Context, autonamingConfig map[string]string) (auto.Stack, error) {
-	err := t.Validate()
+	err := t.validate()
 	if err != nil {
 		return auto.Stack{}, fmt.Errorf("%T template validation failed: %s", t, err)
 	}
 
-	projectName := fmt.Sprintf("client-project-%s", t.GetProjectName())
-	s, err := auto.UpsertStackInlineSource(ctx, t.GetStackName(), projectName, t.PulumiRunFunc())
+	projectName := fmt.Sprintf("client-project-%s", t.getProjectName())
+	s, err := auto.UpsertStackInlineSource(ctx, t.getStackName(), projectName, t.pulumiRunFunc())
 	if err != nil {
 		return auto.Stack{}, fmt.Errorf("failed to create/update stack with error: %s", err)
 	}
 	workspace := s.Workspace()
-	for _, p := range t.GetProviders() {
+	for _, p := range t.getProviders() {
 		err := workspace.InstallPlugin(ctx, p.GetProviderName(), p.GetVersion())
 		if err != nil {
 			return auto.Stack{}, fmt.Errorf("failed to install program plugins: %v\n", err)
 		}
 	}
-	s.SetConfig(ctx, "azure-native:location", auto.ConfigValue{Value: t.GetDefaultParams().Region.ShortString()})
+	s.SetConfig(ctx, "azure-native:location", auto.ConfigValue{Value: t.getDefaultParams().Region.ShortString()})
 	for k, v := range autonamingConfig {
 		c := fmt.Sprintf("pulumi:autonaming.providers.azure-native.resources.azure-native:%s.pattern", k)
 		err = s.SetConfigWithOptions(ctx, c, auto.ConfigValue{Value: v}, &auto.ConfigOptions{
@@ -63,8 +66,8 @@ func createOrSelectStack(t Template, ctx context.Context, autonamingConfig map[s
 	return s, nil
 }
 
-func GetValidDefaultParams(t Template) (*DefaultParams, error) {
-	d := t.GetDefaultParams()
+func getValidDefaultParams(t Template) (*DefaultParams, error) {
+	d := t.getDefaultParams()
 	if d == nil {
 		return &DefaultParams{}, fmt.Errorf("default params can't be nil")
 	}
@@ -84,7 +87,7 @@ func GetValidDefaultParams(t Template) (*DefaultParams, error) {
 	return d, nil
 }
 
-func GetEnabledTemplates(templates []*Templates) ([]Template, error) {
+func getEnabledTemplates(templates []*Templates) ([]Template, error) {
 	var out []Template
 	for _, t := range templates {
 		wrapper := t.GetTemplate()
@@ -118,15 +121,15 @@ func unwrapOneof(wrapper isTemplates_Template) (any, error) {
 }
 
 func buildTemplateDAG(templates []Template) (graph.Graph[TemplateOptions, Template], error) {
-	g := graph.New(Template.Hash, graph.Directed(), graph.Acyclic())
+	g := graph.New(Template.hash, graph.Directed(), graph.Acyclic())
 
 	for _, t := range templates {
 		err := g.AddVertex(t)
 		if err != nil {
 			return nil, fmt.Errorf("failed to add vertex: %s", err)
 		}
-		for _, d := range t.GetDependsOn() {
-			err := g.AddEdge(t.Hash(), d)
+		for _, d := range t.getDependsOn() {
+			err := g.AddEdge(t.hash(), d)
 			if err != nil {
 				return nil, fmt.Errorf("failed to add edge %s", err.Error())
 			}
@@ -137,7 +140,7 @@ func buildTemplateDAG(templates []Template) (graph.Graph[TemplateOptions, Templa
 }
 
 func GetTemplateInstallOrder(t []*Templates) ([]Template, error) {
-	convertedTemplates, err := GetEnabledTemplates(t)
+	convertedTemplates, err := getEnabledTemplates(t)
 	if err != nil {
 		return []Template{}, fmt.Errorf("failed to convert project templates input to template interface: %s", err)
 	}

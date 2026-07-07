@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"sync"
 
 	"github.com/htemuri/azure-pulumi-service-broker/pkg/broker"
 	"github.com/htemuri/azure-pulumi-service-broker/pkg/templates"
@@ -73,15 +74,26 @@ func main() {
 	// if err != nil {
 	// 	logger.Printf("failed to create storage template: %s", err)
 	// }
-	project := broker.Project{
-		Name:        projectName,
-		Environment: env,
+	req := broker.CreateProjectRequest{
+		Project: &broker.Project{
+			Name:        projectName,
+			Environment: env,
+		},
 		Templates: []*templates.Templates{
 			{Template: &templates.Templates_Base{Base: base}},
 			{Template: &templates.Templates_Security{Security: sec}},
 			// {Template: &templates.Templates_Storage{Storage: stor}},
 		},
 	}
+	// project := broker.Project{
+	// 	Name:        projectName,
+	// 	Environment: env,
+	// 	Templates: []*templates.Templates{
+	// 		{Template: &templates.Templates_Base{Base: base}},
+	// 		{Template: &templates.Templates_Security{Security: sec}},
+	// 		// {Template: &templates.Templates_Storage{Storage: stor}},
+	// 	},
+	// }
 
 	// project := broker.Project{
 	// 	Name:               "hanta",
@@ -92,13 +104,13 @@ func main() {
 	// 	KeyVaultOptions:    &broker.KeyVaultOptions{Enabled: false},
 	// 	DataFactoryOptions: &broker.DataFactoryOptions{Enabled: false},
 	// }
-	_, err = templates.GetEnabledTemplates(project.Templates)
-	if err != nil {
-		logger.Print(err)
-		log.Default().Fatal(err)
-	}
+	// _, err = templates.GetEnabledTemplates(project.Templates)
+	// if err != nil {
+	// 	logger.Print(err)
+	// 	log.Default().Fatal(err)
+	// }
 
-	dataBytes, err := proto.Marshal(&project) // cant error from a generated protobuf go type
+	dataBytes, err := proto.Marshal(&req) // cant error from a generated protobuf go type
 	if err != nil {
 		logger.Fatalf("failed to marshal project: %s", err)
 	}
@@ -114,31 +126,31 @@ func main() {
 	}
 
 	// check success subject
-	// var wg sync.WaitGroup
-	// wg.Add(1)
+	var wg sync.WaitGroup
+	wg.Add(1)
 
-	// consumer, err := js.CreateOrUpdateConsumer(ctx, "ProjectJobQueue", jetstream.ConsumerConfig{
-	// 	Name: "broker_api", Durable: "broker_api",
-	// })
-	// if err != nil {
-	// 	logger.Fatalf("failed to create/update durable consumer against %s stream with error: %s\n", "ProjectJobQueue", err)
-	// }
+	consumer, err := js.CreateOrUpdateConsumer(ctx, "ProjectJobQueue", jetstream.ConsumerConfig{
+		Name: "broker_api", Durable: "broker_api",
+	})
+	if err != nil {
+		logger.Fatalf("failed to create/update durable consumer against %s stream with error: %s\n", "ProjectJobQueue", err)
+	}
 
-	// if _, err := consumer.Consume(func(msg jetstream.Msg) {
-	// 	if msg.Subject() == "success" {
-	// 		var pr broker.ProjectResponse
-	// 		err := proto.Unmarshal(msg.Data(), &pr)
-	// 		if err != nil {
-	// 			logger.Printf("failed to unmarshal projectResponse: %s\n", err)
-	// 			return
-	// 		}
-	// 		logger.Printf("Project Response: %v\n", &pr)
-	// 		msg.Ack()
-	// 	}
-	// }); err != nil {
-	// 	logger.Fatal("failed to consume messages from durable stream with error:", err)
-	// }
+	if _, err := consumer.Consume(func(msg jetstream.Msg) {
+		if msg.Subject() == "success" {
+			var pr broker.ProjectResponse
+			err := proto.Unmarshal(msg.Data(), &pr)
+			if err != nil {
+				logger.Printf("failed to unmarshal projectResponse: %s\n", err)
+				return
+			}
+			logger.Printf("Project Response: %v\n", &pr)
+			msg.Ack()
+		}
+	}); err != nil {
+		logger.Fatal("failed to consume messages from durable stream with error:", err)
+	}
 
-	// wg.Wait()
+	wg.Wait()
 
 }

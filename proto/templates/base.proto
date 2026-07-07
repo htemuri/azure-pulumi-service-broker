@@ -8,6 +8,11 @@ option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/template
 
 // Stack creating/selecting subscription and networking
 message Base {
+  BaseRequest request = 1;
+  BaseResponse response = 2; // leave empty when making requests
+}
+
+message BaseRequest {
   DefaultParams default_params = 1;
   SubscriptionArgs subscription = 2;
   NetworkArgs virtual_network = 3;
