@@ -73,7 +73,7 @@ func main() {
 		KeyVault: &templates.KeyVaultArgs{
 			NetworkSettings: &templates.ResourceNetworkArgs{
 				PrivateEndpoint: &templates.PrivateEndpointArgs{
-					Enabled: true,
+					Enabled: false,
 				},
 			},
 		},
@@ -86,7 +86,7 @@ func main() {
 			Sku:        templates.StorAcctSKU_STOR_ACCT_SKU_STANDARD_LRS,
 			NetworkSettings: &templates.ResourceNetworkArgs{
 				PrivateEndpoint: &templates.PrivateEndpointArgs{
-					Enabled:      true,
+					Enabled:      false,
 					SubResources: []string{"blob", "dfs"},
 				},
 			},
