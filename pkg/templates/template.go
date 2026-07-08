@@ -67,7 +67,7 @@ func createOrSelectStack(ctx context.Context, t Template, autonamingConfig map[s
 			return auto.Stack{}, fmt.Errorf("failed to install program plugins: %v\n", err)
 		}
 	}
-	s.SetConfig(ctx, "azure-native:location", auto.ConfigValue{Value: t.getDefaultParams().Region.ShortString()})
+	s.SetConfig(ctx, "azure-native:location", auto.ConfigValue{Value: t.getDefaultParams().Region.shortString()})
 	for k, v := range autonamingConfig {
 		c := fmt.Sprintf("pulumi:autonaming.providers.azure-native.resources.azure-native:%s.pattern", k)
 		err = s.SetConfigWithOptions(ctx, c, auto.ConfigValue{Value: v}, &auto.ConfigOptions{
@@ -100,7 +100,7 @@ func getValidDefaultParams(t Template) (*DefaultParams, error) {
 	if cred == nil {
 		return &DefaultParams{}, fmt.Errorf("pulumi provider credentials can't be nil")
 	}
-	if _, err := cred.Validate(); err != nil {
+	if _, err := cred.validate(); err != nil {
 		return &DefaultParams{}, err
 	}
 	return d, nil

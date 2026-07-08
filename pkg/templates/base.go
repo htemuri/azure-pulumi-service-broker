@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/pulumi/pulumi-azure-native-sdk/network/v3"
 	"github.com/pulumi/pulumi-azure-native-sdk/resources/v3"
 	"github.com/pulumi/pulumi-azure-native-sdk/subscription/v3"
@@ -17,7 +18,7 @@ import (
 
 func (br *BaseRequest) newTemplate() (Template, error) {
 	b := &Base{
-		StackName:        fmt.Sprintf("%s-base", br.GetDefaultParams().GetEnvironment().ShortString()),
+		StackName:        fmt.Sprintf("%s-base", br.GetDefaultParams().GetEnvironment().shortString()),
 		ProviderVersions: []*ProviderVersion{{ProviderName: "azure-native", Version: "v3.19.0"}},
 		DependsOn:        []TemplateOptions{},
 		Request:          br,
@@ -109,15 +110,18 @@ func (b *Base) Deploy(ctx context.Context, templateResponses []*TemplatesRespons
 	if !ok {
 		return &newResponse, fmt.Errorf("failed to get vnetId for base response: %s\n", err)
 	}
-	// subnets, ok := res.Outputs["subnets"].Value.([]string)
-	// if !ok {
-	// 	return cm, fmt.Errorf("failed to get subnets for base response: %s\n", err)
-	// }
+	var subnets []*SubnetResponse
+	if err := mapstructure.Decode(res.Outputs["subnets"].Value, &subnets); err != nil {
+		return &newResponse, fmt.Errorf("failed to get subnets for base response")
+	}
+
+	// TODO: get ips left for subnets
 
 	return &TemplatesResponse_Base{
 		Base: &BaseResponse{
 			SubscriptionId: subscriptionId,
 			VnetId:         vnetId,
+			Subnets:        subnets,
 		},
 	}, nil
 }
@@ -128,11 +132,9 @@ func (b *Base) pulumiRunFunc() pulumi.RunFunc {
 		subscriptionArgs := b.GetRequest().GetSubscription()
 		virtualNetworkArgs := b.GetRequest().GetVirtualNetwork()
 		projectName := defaultParams.GetProjectName()
-		envShort := defaultParams.GetEnvironment().ShortString()
-		ctx.Log.Info("pre provider", &pulumi.LogArgs{})
+		envShort := defaultParams.GetEnvironment().shortString()
 
 		var provider *pulumiazurenativesdk.Provider
-
 		var subscriptionId pulumi.StringPtrInput
 		if subscriptionArgs.GetSubscriptionId() == "" {
 			provider, err := pulumiazurenativesdk.NewProvider(ctx, "stale_sub_provider", &pulumiazurenativesdk.ProviderArgs{
@@ -187,13 +189,11 @@ func (b *Base) pulumiRunFunc() pulumi.RunFunc {
 			return err
 		}
 
-		ctx.Log.Info("past provider", nil)
-
 		// network settings
 		resourceGroupName := pulumi.Sprintf("rg-%s-network-%s", strings.ToLower(projectName), strings.ToLower(envShort))
 		networkRg, err := resources.NewResourceGroup(ctx, "network_rg", &resources.ResourceGroupArgs{
 			ResourceGroupName: resourceGroupName,
-			Location:          pulumi.String(defaultParams.Region.ShortString()),
+			Location:          pulumi.String(defaultParams.Region.shortString()),
 		}, pulumi.Provider(provider))
 		if err != nil {
 			ctx.Log.Error(err.Error(), nil)
@@ -202,7 +202,7 @@ func (b *Base) pulumiRunFunc() pulumi.RunFunc {
 		}
 
 		ipamPool := virtualNetworkArgs.GetIpamPoolPrefixAllocations()
-		vnetName := fmt.Sprintf("vnet-%s-%s-%s", strings.ToLower(projectName), strings.ToLower(envShort), strings.ToLower(defaultParams.Region.ShortString()))
+		vnetName := fmt.Sprintf("vnet-%s-%s-%s", strings.ToLower(projectName), strings.ToLower(envShort), strings.ToLower(defaultParams.Region.shortString()))
 
 		vnet, err := network.NewVirtualNetwork(ctx, vnetName, &network.VirtualNetworkArgs{
 			ResourceGroupName: networkRg.Name,
@@ -215,7 +215,7 @@ func (b *Base) pulumiRunFunc() pulumi.RunFunc {
 					},
 				},
 			},
-			Location: pulumi.String(defaultParams.Region.ShortString()),
+			Location: pulumi.String(defaultParams.Region.shortString()),
 		}, pulumi.Provider(provider))
 		if err != nil {
 			ctx.Log.Error(err.Error(), nil)

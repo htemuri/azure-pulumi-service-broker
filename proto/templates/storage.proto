@@ -17,15 +17,49 @@ message Storage {
 
 message StorageRequest {
   DefaultParams default_params = 1;
+  StorageAccountArgs storage_account = 2;
 }
 
 message StorageResponse {
-  string storage_account_id = 1;
+  string resource_group_name = 1;
+  string resource_group_id = 2;
+  string storage_account_name = 3;
+  string storage_account_id = 4;
+  repeated PrivateEndpointResponse private_endpoints = 5;
 }
 
-message StorageAccount {
+message StorageAccountArgs {
   optional bool disabled = 1; // enabled by default
-  ResourceNetworkArgs network_settings = 2; // default public network disabled with no private endpoints
+  bool hns_enabled = 2; // disabled by default
+  bool blob_anon_access_enabled = 3; // disabled by default
+  StorAcctKind kind = 4; // default is STOR_ACCT_KIND_STORAGE_V2 if unspecified
+  StorAcctSKU sku = 5; // default is STOR_ACCT_SKU_STANDARD_LRS if unspecified
+  ResourceNetworkArgs network_settings = 6; // default public network disabled with no private endpoints
+}
+
+enum StorAcctSKU {
+  STOR_ACCT_SKU_UNSPECIFIED = 0;
+  STOR_ACCT_SKU_STANDARD_LRS = 1; // Pay-as-you-go storage account HDD with locally redundant storage (LRS)
+  STOR_ACCT_SKU_STANDARD_ZRS = 2; // Pay-as-you-go storage account HDD with zone redundant storage (ZRS)
+  STOR_ACCT_SKU_STANDARD_GRS = 3; // Pay-as-you-go storage account HDD with geo redundant storage (GRS)
+  STOR_ACCT_SKU_STANDARD_GZRS = 4; // Pay-as-you-go storage account HDD with geo-zone redundant storage (GZRS)
+  STOR_ACCT_SKU_STANDARD_RAGRS = 5; // Pay-as-you-go storage account HDD with read-accessible geo redundant storage (RAGRS)
+  STOR_ACCT_SKU_STANDARD_RAGZRS = 6; // Pay-as-you-go storage account HDD with read-accessible geo-zone redundant storage (RAGZRS)
+  STOR_ACCT_SKU_PREMIUM_LRS = 7; // Pay-as-you-go storage account SSD with locally redundant storage (LRS)
+  STOR_ACCT_SKU_PREMIUM_ZRS = 8; // Pay-as-you-go storage account SSD with zone redundant storage (ZRS)
+  STOR_ACCT_SKU_STANDARDV2_LRS = 9; // Provisioned v2 storage account HDD with locally redundant storage
+  STOR_ACCT_SKU_STANDARDV2_ZRS = 10; // Provisioned v2 storage account HDD with zone redundant storage
+  STOR_ACCT_SKU_STANDARDV2_GRS = 11; // Provisioned v2 storage account HDD with geo redundant storage.
+  STOR_ACCT_SKU_STANDARDV2_GZRS = 12; // Provisioned v2 storage account HDD with geo-zone redundant.
+  STOR_ACCT_SKU_PREMIUMV2_LRS = 13; // Provisioned v2 storage account SSD with locally redundant storage.
+  STOR_ACCT_SKU_PREMIUMV2_ZRS = 14; // Provisioned v2 storage account SSD with zone redundant storage.
+}
+
+enum StorAcctKind {
+  STOR_ACCT_KIND_UNSPECIFIED = 0;
+  STOR_ACCT_KIND_STORAGE_V2 = 1; // Standard storage account type for blobs, file shares, queues, and tables. Recommended for most scenarios that use Azure Storage. If you want support for network file system (NFS) in Azure Files, use the premium file shares account type.
+  STOR_ACCT_KIND_BLOCK_BLOB_STORAGE = 2; // Premium storage account type for block blobs and append blobs. Recommended for scenarios with high transaction rates or that use smaller objects or require consistently low storage latency
+  STOR_ACCT_KIND_FILE_STORAGE = 3; // Premium storage account type for file shares only. Recommended for enterprise or high-performance scale applications. Use this account type if you want a storage account that supports both Server Message Block (SMB) and NFS file shares.
 }
 
 // can add whatever other resources below

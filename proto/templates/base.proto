@@ -24,7 +24,7 @@ message BaseRequest {
 message BaseResponse {
   string subscription_id = 1;
   string vnet_id = 2;
-  repeated string subnet_ids = 3;
+  repeated SubnetResponse subnets = 3;
 }
 
 message SubscriptionArgs {
@@ -41,6 +41,12 @@ message NetworkArgs {
 message SubnetArgs {
   string name = 1;
   int32 number_of_ip_addresses = 2;
+}
+
+message SubnetResponse {
+  string name = 1;
+  string id = 2;
+  int32 ips_left = 3; // number of IP addresses left to consume
 }
 
 message IpamPoolPrefixAllocation {

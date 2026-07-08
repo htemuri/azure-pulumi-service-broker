@@ -64,11 +64,33 @@ func main() {
 			IpamPoolPrefixAllocations: &templates.IpamPoolPrefixAllocation{
 				IpamPoolResourceId:  os.Getenv("CLIENT_PRD_IPAM_RESOURCE_ID"),
 				NumberOfIpAddresses: 160},
-			Subnets: []*templates.SubnetArgs{{Name: "default", NumberOfIpAddresses: 48}, {Name: "second", NumberOfIpAddresses: 32}}},
+			Subnets: []*templates.SubnetArgs{
+				{Name: "default", NumberOfIpAddresses: 48},
+				{Name: "second", NumberOfIpAddresses: 32}}},
 	}
 	sec := &templates.SecurityRequest{
 		DefaultParams: defaultArgs,
-		KeyVault:      &templates.KeyVaultArgs{},
+		KeyVault: &templates.KeyVaultArgs{
+			NetworkSettings: &templates.ResourceNetworkArgs{
+				PrivateEndpoint: &templates.PrivateEndpointArgs{
+					Enabled: true,
+				},
+			},
+		},
+	}
+	stor := &templates.StorageRequest{
+		DefaultParams: defaultArgs,
+		StorageAccount: &templates.StorageAccountArgs{
+			HnsEnabled: true,
+			Kind:       templates.StorAcctKind_STOR_ACCT_KIND_STORAGE_V2,
+			Sku:        templates.StorAcctSKU_STOR_ACCT_SKU_STANDARD_LRS,
+			NetworkSettings: &templates.ResourceNetworkArgs{
+				PrivateEndpoint: &templates.PrivateEndpointArgs{
+					Enabled:      true,
+					SubResources: []string{"blob", "dfs"},
+				},
+			},
+		},
 	}
 	// stor, err := templates.NewStorageTemplate(
 	// 	projectName, env, reg, pulumiCred,
@@ -84,7 +106,7 @@ func main() {
 		TemplateRequests: []*templates.TemplatesRequest{
 			{Request: &templates.TemplatesRequest_Base{Base: base}},
 			{Request: &templates.TemplatesRequest_Security{Security: sec}},
-			// {Template: &templates.Templates_Storage{Storage: stor}},
+			{Request: &templates.TemplatesRequest_Storage{Storage: stor}},
 		},
 	}
 	// project := broker.Project{

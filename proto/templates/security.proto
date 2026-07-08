@@ -21,13 +21,16 @@ message SecurityRequest {
 }
 
 message SecurityResponse {
-  string key_vault_id = 1;
-  string key_vault_urn = 2;
+  string resource_group_name = 1;
+  string resource_group_id = 2;
+  string key_vault_id = 3;
+  string key_vault_uri = 4;
+  repeated PrivateEndpointResponse private_endpoints = 5;
 }
 
 message KeyVaultArgs {
   bool disabled = 1; // enabled by default
-  ResourceNetworkArgs network_settings = 2;
+  ResourceNetworkArgs network_settings = 2; // default public network disabled with no private endpoints
 }
 
 // can add whatever other resources below

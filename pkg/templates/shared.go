@@ -2,26 +2,14 @@ package templates
 
 import "fmt"
 
-type SubnetResponse []struct {
-	AddressPrefixes           []string `json:"addressPrefixes"`
-	Delegations               []any    `json:"delegations"`
-	Etag                      string   `json:"etag"`
-	ID                        string   `json:"id"`
-	IpamPoolPrefixAllocations []struct {
-		AllocatedAddressPrefixes []string `json:"allocatedAddressPrefixes"`
-		ID                       string   `json:"id"`
-		NumberOfIPAddresses      string   `json:"numberOfIpAddresses"`
-	} `json:"ipamPoolPrefixAllocations"`
-	Name                              string `json:"name"`
-	PrivateEndpointNetworkPolicies    string `json:"privateEndpointNetworkPolicies"`
-	PrivateLinkServiceNetworkPolicies string `json:"privateLinkServiceNetworkPolicies"`
-	ProvisioningState                 string `json:"provisioningState"`
-	Purpose                           string `json:"purpose"`
-	Type                              string `json:"type"`
+type vnetUsageResponse struct {
+	CurrentValue int    `json:"currentValue"`
+	Id           string `json:"id"`
+	Limit        int    `json:"limit"`
 }
 
 // writing a custom shortstring functions because you can't serialize enums to custom strings in protobuf
-func (e Environment) ShortString() string {
+func (e Environment) shortString() string {
 	switch e {
 	case Environment_ENVIRONMENT_DEV:
 		return "dev"
@@ -35,7 +23,7 @@ func (e Environment) ShortString() string {
 		return "unspecified"
 	}
 }
-func (r Region) ShortString() string {
+func (r Region) shortString() string {
 	switch r {
 	case Region_REGION_EASTUS:
 		return "EASTUS"
@@ -46,7 +34,7 @@ func (r Region) ShortString() string {
 	}
 }
 
-func (c *PulumiProviderCredentialArgs) Validate() (bool, error) {
+func (c *PulumiProviderCredentialArgs) validate() (bool, error) {
 	if c.TenantId == "" {
 		return false, fmt.Errorf("credential missing tenant id")
 	}
