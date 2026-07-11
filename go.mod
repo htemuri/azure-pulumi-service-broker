@@ -5,16 +5,18 @@ go 1.26.3
 require (
 	github.com/dominikbraun/graph v0.23.0
 	github.com/go-viper/mapstructure/v2 v2.5.0
+	github.com/google/uuid v1.6.0
 	github.com/joho/godotenv v1.5.1
 	github.com/nats-io/nats.go v1.52.0
-	github.com/pulumi/pulumi-azure-native-sdk/keyvault/v3 v3.19.0
-	github.com/pulumi/pulumi-azure-native-sdk/network/v3 v3.19.0
-	github.com/pulumi/pulumi-azure-native-sdk/resources/v3 v3.19.0
-	github.com/pulumi/pulumi-azure-native-sdk/storage/v3 v3.19.0
-	github.com/pulumi/pulumi-azure-native-sdk/subscription/v3 v3.19.0
-	github.com/pulumi/pulumi-azure-native-sdk/v3 v3.19.0
+	github.com/pulumi/pulumi-azure-native-sdk/keyvault/v3 v3.20.0
+	github.com/pulumi/pulumi-azure-native-sdk/network/v3 v3.20.0
+	github.com/pulumi/pulumi-azure-native-sdk/resources/v3 v3.20.0
+	github.com/pulumi/pulumi-azure-native-sdk/storage/v3 v3.20.0
+	github.com/pulumi/pulumi-azure-native-sdk/subscription/v3 v3.20.0
+	github.com/pulumi/pulumi-azure-native-sdk/v3 v3.20.0
 	github.com/pulumi/pulumi-command/sdk v1.2.1
-	github.com/pulumi/pulumi/sdk/v3 v3.250.0
+	github.com/pulumi/pulumi/sdk/v3 v3.251.0
+	google.golang.org/grpc v1.82.0
 	google.golang.org/protobuf v1.36.11
 )
 
@@ -65,7 +67,6 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/glog v1.2.5 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.29.0 // indirect
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
@@ -96,7 +97,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pkg/term v1.1.0 // indirect
 	github.com/pulumi/appdash v0.0.0-20231130102222-75f619a67231 // indirect
-	github.com/pulumi/esc v0.25.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rogpeppe/go-internal v1.15.0 // indirect
 	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1 // indirect
@@ -120,18 +120,17 @@ require (
 	go.opentelemetry.io/proto/otlp v1.10.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.53.0 // indirect
-	golang.org/x/exp v0.0.0-20260611194520-c48552f49976 // indirect
-	golang.org/x/mod v0.37.0 // indirect
-	golang.org/x/net v0.56.0 // indirect
-	golang.org/x/sync v0.21.0 // indirect
-	golang.org/x/sys v0.46.0 // indirect
-	golang.org/x/term v0.44.0 // indirect
-	golang.org/x/text v0.39.0 // indirect
-	golang.org/x/tools v0.47.0 // indirect
+	golang.org/x/crypto v0.54.0 // indirect
+	golang.org/x/exp v0.0.0-20260709172345-9ea1abe57597 // indirect
+	golang.org/x/mod v0.38.0 // indirect
+	golang.org/x/net v0.57.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/term v0.45.0 // indirect
+	golang.org/x/text v0.40.0 // indirect
+	golang.org/x/tools v0.48.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260706201446-f0a921348800 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260706201446-f0a921348800 // indirect
-	google.golang.org/grpc v1.82.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/frand v1.5.1 // indirect
 )

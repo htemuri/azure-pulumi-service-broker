@@ -123,10 +123,7 @@ func (s *Storage) Deploy(ctx context.Context, templateResponses []*TemplatesResp
 		len(baseResponse.GetSubnets()) == 0 {
 		return &newResponse, fmt.Errorf("missing base template response when trying to deploy storage template")
 	}
-	// subnets, ok := cm["subnets"].(SubnetResponse)
-	// if !ok {
-	// 	return cm, fmt.Errorf("failed getting 'subnets' from cm")
-	// }
+
 	stack.SetConfig(ctx, "subscriptionId", auto.ConfigValue{Value: baseResponse.SubscriptionId})
 	stack.SetConfig(ctx, "subnetId", auto.ConfigValue{Value: baseResponse.Subnets[0].Id})
 

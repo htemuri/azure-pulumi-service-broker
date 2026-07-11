@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -71,7 +72,8 @@ func main() {
 		KeyVault: &templates.KeyVaultArgs{
 			NetworkSettings: &templates.ResourceNetworkArgs{
 				PrivateEndpoint: &templates.PrivateEndpointArgs{
-					Enabled: false,
+					Enabled:      true,
+					SubResources: []string{"vault"},
 				},
 			},
 		},
@@ -84,7 +86,7 @@ func main() {
 			Sku:        templates.StorAcctSKU_STOR_ACCT_SKU_STANDARD_LRS,
 			NetworkSettings: &templates.ResourceNetworkArgs{
 				PrivateEndpoint: &templates.PrivateEndpointArgs{
-					Enabled:      false,
+					Enabled:      true,
 					SubResources: []string{"blob", "dfs"},
 				},
 			},
@@ -110,8 +112,8 @@ func main() {
 	}
 	logger.Printf("deployment id: %v", res.GetDeploymentId())
 
-	for range 10 {
-		time.Sleep(time.Second * 5)
+	for range 45 { // check status for 7.5 minutes
+		time.Sleep(time.Second * 10) // every 10 seconds
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 		defer cancel()
 		stat, err := client.GetProjectStatus(ctx, &broker.GetProjectStatusRequest{
@@ -121,7 +123,8 @@ func main() {
 			logger.Fatalf("failed to get status of deployment %s", err)
 		}
 		if stat.GetStatus() == templates.Status_STATUS_SUCCESS {
-			logger.Printf("completed deployment: %v", stat)
+			bytes, _ := json.MarshalIndent(stat, "", "  ")
+			logger.Printf("completed deployment: \n%v", string(bytes))
 			return
 		}
 		if stat.GetStatus() == templates.Status_STATUS_ERROR {

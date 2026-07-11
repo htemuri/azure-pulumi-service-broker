@@ -87,10 +87,7 @@ func (s *Security) Deploy(ctx context.Context, templateResponses []*TemplatesRes
 		len(baseResponse.GetSubnets()) == 0 {
 		return &newResponse, fmt.Errorf("missing base template response when trying to deploy security template")
 	}
-	// subnets, ok := cm["subnets"].(SubnetResponse)
-	// if !ok {
-	// 	return cm, fmt.Errorf("failed getting 'subnets' from cm")
-	// }
+
 	stack.SetConfig(ctx, "subscriptionId", auto.ConfigValue{Value: baseResponse.SubscriptionId})
 	stack.SetConfig(ctx, "subnetId", auto.ConfigValue{Value: baseResponse.Subnets[0].Id})
 
