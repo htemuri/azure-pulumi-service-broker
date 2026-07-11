@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/htemuri/azure-pulumi-service-broker/pkg/broker"
+	"github.com/htemuri/azure-pulumi-service-broker/pkg/templates"
 	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -56,19 +59,52 @@ func main() {
 		logger.Fatalf("failed to create/update durable consumer against %s stream with error: %s\n", config.ProjectStreamName, err)
 	}
 
+	kvStore, err := js.CreateOrUpdateKeyValue(ctx, jetstream.KeyValueConfig{
+		Bucket:      "deployments",
+		Description: "List of project deployments in k:v format <deploymentId>:<x GetProjectStatusResponse>",
+	})
+	if err != nil {
+		logger.Fatalf("failed to create/update nats project deployment kv store with error: %s\n", err)
+	}
+
 	if _, err := consumer.Consume(func(msg jetstream.Msg) {
-		if msg.Subject() == "failed" || msg.Subject() == "success" {
+		splitSubject := strings.Split(msg.Subject(), ".")
+		if len(splitSubject) != 2 {
+			logger.Printf("invalid message subject syntax %s. project queue subjects should be in format '<action>.<deploymentId>'", msg.Subject())
+			msg.Ack()
+			return
+		}
+		action, deploymentId := splitSubject[0], splitSubject[1]
+		if action != "create" {
+			msg.Ack()
+			return
+		}
+		var projectStatus broker.GetProjectStatusResponse
+		projectStatus.Status = templates.Status_STATUS_IN_PROGRESS
+		err = updateProjectStatusKV(ctx, kvStore, deploymentId, &projectStatus)
+		if err != nil {
+			logger.Print(err)
+			msg.Ack()
 			return
 		}
 		msg.InProgress()
+
 		var createProjectRequest broker.CreateProjectRequest
 		err = proto.Unmarshal(msg.Data(), &createProjectRequest)
 		if err != nil {
 			logger.Printf("failed to unmarshal message from subject '%s' with error: \n%s", msg.Subject(), err)
-			msg.Nak()
+			msg.Ack()
+			projectStatus.Status = templates.Status_STATUS_ERROR
+			projectStatus.Error = fmt.Sprintf("failed to unmarshal message from subject '%s' with error: \n%s", msg.Subject(), err)
+			err = updateProjectStatusKV(ctx, kvStore, deploymentId, &projectStatus)
+			if err != nil {
+				logger.Print(err)
+				return
+			}
 			return
 		}
 		project := createProjectRequest.GetProject()
+		projectStatus.ProjectName = project.Name
 		nh := NewNatsHandler(context.Background(), project, createProjectRequest.GetTemplateRequests())
 		msg.Ack()
 		logger.Printf("received a message from subject '%s' about project with name '%s'\n", msg.Subject(), project.Name)
@@ -76,29 +112,23 @@ func main() {
 		templateResponses, err := nh.Handle()
 		if err != nil {
 			logger.Printf("failed to deploy templates for project %s with error: %s", project.Name, err)
-			logger.Printf("sending project %s to failed deployment queue\n", project.Name)
-			_, err = js.Publish(ctx, "failed", msg.Data())
+			projectStatus.Status = templates.Status_STATUS_ERROR
+			projectStatus.Error = fmt.Sprintf("failed to deploy templates for project %s with error: %s", project.Name, err)
+			err = updateProjectStatusKV(ctx, kvStore, deploymentId, &projectStatus)
 			if err != nil {
-				logger.Printf("failed to send project job to 'failed' subject in nats with error:\n\t%s", err)
+				logger.Print(err)
+				return
 			}
 			return
 		}
-		createProjectResponse := &broker.CreateProjectResponse{
-			Name:              project.Name,
-			TemplateResponses: templateResponses,
-		}
-
-		// send to nats successful subject
-		bytes, err := proto.Marshal(createProjectResponse)
+		projectStatus.Status = templates.Status_STATUS_SUCCESS
+		projectStatus.TemplateResponses = templateResponses
+		err = updateProjectStatusKV(ctx, kvStore, deploymentId, &projectStatus)
 		if err != nil {
-			logger.Printf("failed to marshal project response: %s\n", err)
+			logger.Print(err)
 			return
 		}
-		_, err = js.Publish(ctx, "success", bytes)
-		if err != nil {
-			logger.Printf("failed to publish response to nats success subject: %s\n", err)
-			return
-		}
+		logger.Printf("successfully deployed project %s\n", project.Name)
 	}); err != nil {
 		logger.Fatal("failed to consume messages from durable stream with error:", err)
 	}

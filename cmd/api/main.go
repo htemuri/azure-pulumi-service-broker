@@ -2,17 +2,16 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"net"
 	"os"
-	"sync"
 
 	"github.com/htemuri/azure-pulumi-service-broker/pkg/broker"
-	"github.com/htemuri/azure-pulumi-service-broker/pkg/project"
-	"github.com/htemuri/azure-pulumi-service-broker/pkg/templates"
 	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
-	"google.golang.org/protobuf/proto"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -38,77 +37,105 @@ func main() {
 	}
 	logger.Println("upgraded connection to jetstream")
 
-	// assume I unmarshalled grpc request to project protobuf go type
-	projectName := "covid"
-	env := templates.Environment_ENVIRONMENT_PRD
-	reg := templates.Region_REGION_EASTUS
-	pulumiCred := &templates.PulumiProviderCredentialArgs{
-		TenantId:     os.Getenv("TENANT_ID"),
-		ClientId:     os.Getenv("PULUMI_SP_CLIENT_ID"),
-		ClientSecret: os.Getenv("PULUMI_SP_CLIENT_SECRET"),
+	_, err = js.UpdateStream(ctx, jetstream.StreamConfig{Name: "ProjectJobQueue", Description: "Stream to manage active jobs for projects", Subjects: []string{"create.*", "update.*", "delete.*"}})
+	if err != nil {
+		logger.Fatal("failed to create 'ProjectJobQueue' stream with error: ", err)
 	}
-	defaultArgs := &templates.DefaultParams{
-		ProjectName:              projectName,
-		Environment:              env,
-		Region:                   reg,
-		PulumiProviderCredential: pulumiCred,
+
+	logger.Println("creating kvStore connection to deployments")
+	kvStore, err := js.KeyValue(ctx, "deployments")
+	if err != nil {
+		logger.Fatalf("failed to select deployments kv store: %s", err)
 	}
-	base := &templates.BaseRequest{
-		DefaultParams: defaultArgs,
-		Subscription: &templates.SubscriptionArgs{
-			SubscriptionId: "23b1b9f5-6b57-4c00-87d7-7b49d4d88c6c",
-			// BillingScope:      os.Getenv("BILLING_SCOPE"),
-			// ManagementGroupId: os.Getenv("CLIENT_PROJ_MGMT_GROUP_ID"),
-		},
-		VirtualNetwork: &templates.NetworkArgs{
-			IpamPoolPrefixAllocations: &templates.IpamPoolPrefixAllocation{
-				IpamPoolResourceId:  os.Getenv("CLIENT_PRD_IPAM_RESOURCE_ID"),
-				NumberOfIpAddresses: 160},
-			Subnets: []*templates.SubnetArgs{
-				{Name: "default", NumberOfIpAddresses: 48},
-				{Name: "second", NumberOfIpAddresses: 32}}},
+
+	port := 50051
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+	if err != nil {
+		logger.Fatalf("failed to listen on port %d with error %s\n", port, err)
 	}
-	sec := &templates.SecurityRequest{
-		DefaultParams: defaultArgs,
-		KeyVault: &templates.KeyVaultArgs{
-			NetworkSettings: &templates.ResourceNetworkArgs{
-				PrivateEndpoint: &templates.PrivateEndpointArgs{
-					Enabled: false,
-				},
-			},
-		},
+	s := grpc.NewServer()
+	broker.RegisterBrokerServiceServer(s, &server{
+		js:      js,
+		kvStore: kvStore,
+		logger:  logger,
+	})
+
+	logger.Printf("server listening at %v", lis.Addr())
+	if err := s.Serve(lis); err != nil {
+		logger.Fatalf("failed to serve: %v", err)
 	}
-	stor := &templates.StorageRequest{
-		DefaultParams: defaultArgs,
-		StorageAccount: &templates.StorageAccountArgs{
-			HnsEnabled: true,
-			Kind:       templates.StorAcctKind_STOR_ACCT_KIND_STORAGE_V2,
-			Sku:        templates.StorAcctSKU_STOR_ACCT_SKU_STANDARD_LRS,
-			NetworkSettings: &templates.ResourceNetworkArgs{
-				PrivateEndpoint: &templates.PrivateEndpointArgs{
-					Enabled:      false,
-					SubResources: []string{"blob", "dfs"},
-				},
-			},
-		},
-	}
+
+	// // assume I unmarshalled grpc request to project protobuf go type
+	// projectName := "covid"
+	// env := templates.Environment_ENVIRONMENT_PRD
+	// reg := templates.Region_REGION_EASTUS
+	// pulumiCred := &templates.PulumiProviderCredentialArgs{
+	// 	TenantId:     os.Getenv("TENANT_ID"),
+	// 	ClientId:     os.Getenv("PULUMI_SP_CLIENT_ID"),
+	// 	ClientSecret: os.Getenv("PULUMI_SP_CLIENT_SECRET"),
+	// }
+	// defaultArgs := &templates.DefaultParams{
+	// 	ProjectName:              projectName,
+	// 	Environment:              env,
+	// 	Region:                   reg,
+	// 	PulumiProviderCredential: pulumiCred,
+	// }
+	// base := &templates.BaseRequest{
+	// 	DefaultParams: defaultArgs,
+	// 	Subscription: &templates.SubscriptionArgs{
+	// 		SubscriptionId: "23b1b9f5-6b57-4c00-87d7-7b49d4d88c6c",
+	// 		// BillingScope:      os.Getenv("BILLING_SCOPE"),
+	// 		// ManagementGroupId: os.Getenv("CLIENT_PROJ_MGMT_GROUP_ID"),
+	// 	},
+	// 	VirtualNetwork: &templates.NetworkArgs{
+	// 		IpamPoolPrefixAllocations: &templates.IpamPoolPrefixAllocation{
+	// 			IpamPoolResourceId:  os.Getenv("CLIENT_PRD_IPAM_RESOURCE_ID"),
+	// 			NumberOfIpAddresses: 160},
+	// 		Subnets: []*templates.SubnetArgs{
+	// 			{Name: "default", NumberOfIpAddresses: 48},
+	// 			{Name: "second", NumberOfIpAddresses: 32}}},
+	// }
+	// sec := &templates.SecurityRequest{
+	// 	DefaultParams: defaultArgs,
+	// 	KeyVault: &templates.KeyVaultArgs{
+	// 		NetworkSettings: &templates.ResourceNetworkArgs{
+	// 			PrivateEndpoint: &templates.PrivateEndpointArgs{
+	// 				Enabled: false,
+	// 			},
+	// 		},
+	// 	},
+	// }
+	// stor := &templates.StorageRequest{
+	// 	DefaultParams: defaultArgs,
+	// 	StorageAccount: &templates.StorageAccountArgs{
+	// 		HnsEnabled: true,
+	// 		Kind:       templates.StorAcctKind_STOR_ACCT_KIND_STORAGE_V2,
+	// 		Sku:        templates.StorAcctSKU_STOR_ACCT_SKU_STANDARD_LRS,
+	// 		NetworkSettings: &templates.ResourceNetworkArgs{
+	// 			PrivateEndpoint: &templates.PrivateEndpointArgs{
+	// 				Enabled:      false,
+	// 				SubResources: []string{"blob", "dfs"},
+	// 			},
+	// 		},
+	// 	},
+	// }
 	// stor, err := templates.NewStorageTemplate(
 	// 	projectName, env, reg, pulumiCred,
 	// )
 	// if err != nil {
 	// 	logger.Printf("failed to create storage template: %s", err)
 	// }
-	req := broker.CreateProjectRequest{
-		Project: &project.Project{
-			Name:        projectName,
-			Environment: env,
-		},
-		TemplateRequests: []*templates.TemplatesRequest{
-			{Request: &templates.TemplatesRequest_Base{Base: base}},
-			{Request: &templates.TemplatesRequest_Security{Security: sec}},
-			{Request: &templates.TemplatesRequest_Storage{Storage: stor}},
-		},
-	}
+	// _ = broker.CreateProjectRequest{
+	// 	Project: &project.Project{
+	// 		Name:        projectName,
+	// 		Environment: env,
+	// 	},
+	// 	TemplateRequests: []*templates.TemplatesRequest{
+	// 		{Request: &templates.TemplatesRequest_Base{Base: base}},
+	// 		// {Request: &templates.TemplatesRequest_Security{Security: sec}},
+	// 		// {Request: &templates.TemplatesRequest_Storage{Storage: stor}},
+	// 	},
+	// }
 	// project := broker.Project{
 	// 	Name:        projectName,
 	// 	Environment: env,
@@ -134,47 +161,34 @@ func main() {
 	// 	log.Default().Fatal(err)
 	// }
 
-	dataBytes, err := proto.Marshal(&req) // cant error from a generated protobuf go type
-	if err != nil {
-		logger.Fatalf("failed to marshal project: %s", err)
-	}
 	// create/update the project stream
 
-	_, err = js.UpdateStream(ctx, jetstream.StreamConfig{Name: "ProjectJobQueue", Description: "Stream to manage active jobs for projects", Subjects: []string{"create", "update", "delete", "failed", "success"}})
-	if err != nil {
-		logger.Fatal("failed to create 'ProjectJobQueue' stream with error: ", err)
-	}
-	_, err = js.Publish(ctx, "create", dataBytes)
-	if err != nil {
-		logger.Println("failed to publish to subject 'create' with error: ", err)
-	}
+	// // check success subject
+	// var wg sync.WaitGroup
+	// wg.Add(1)
 
-	// check success subject
-	var wg sync.WaitGroup
-	wg.Add(1)
+	// consumer, err := js.CreateOrUpdateConsumer(ctx, "ProjectJobQueue", jetstream.ConsumerConfig{
+	// 	Name: "broker_api", Durable: "broker_api",
+	// })
+	// if err != nil {
+	// 	logger.Fatalf("failed to create/update durable consumer against %s stream with error: %s\n", "ProjectJobQueue", err)
+	// }
 
-	consumer, err := js.CreateOrUpdateConsumer(ctx, "ProjectJobQueue", jetstream.ConsumerConfig{
-		Name: "broker_api", Durable: "broker_api",
-	})
-	if err != nil {
-		logger.Fatalf("failed to create/update durable consumer against %s stream with error: %s\n", "ProjectJobQueue", err)
-	}
+	// if _, err := consumer.Consume(func(msg jetstream.Msg) {
+	// 	if msg.Subject() == "success" {
+	// 		var pr broker.CreateProjectResponse
+	// 		err := proto.Unmarshal(msg.Data(), &pr)
+	// 		if err != nil {
+	// 			logger.Printf("failed to unmarshal projectResponse: %s\n", err)
+	// 			return
+	// 		}
+	// 		logger.Printf("Project Response: %v\n", &pr)
+	// 		msg.Ack()
+	// 	}
+	// }); err != nil {
+	// 	logger.Fatal("failed to consume messages from durable stream with error:", err)
+	// }
 
-	if _, err := consumer.Consume(func(msg jetstream.Msg) {
-		if msg.Subject() == "success" {
-			var pr broker.CreateProjectResponse
-			err := proto.Unmarshal(msg.Data(), &pr)
-			if err != nil {
-				logger.Printf("failed to unmarshal projectResponse: %s\n", err)
-				return
-			}
-			logger.Printf("Project Response: %v\n", &pr)
-			msg.Ack()
-		}
-	}); err != nil {
-		logger.Fatal("failed to consume messages from durable stream with error:", err)
-	}
-
-	wg.Wait()
+	// wg.Wait()
 
 }

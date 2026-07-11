@@ -13,8 +13,9 @@ enum TemplateOptions {
 
 enum Status {
   STATUS_UNSPECIFIED = 0;
-  STATUS_SUCCESS = 1;
-  STATUS_ERROR = 2;
+  STATUS_IN_PROGRESS = 1;
+  STATUS_SUCCESS = 2;
+  STATUS_ERROR = 3;
 }
 
 enum Environment {

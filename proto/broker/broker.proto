@@ -3,6 +3,7 @@ syntax = "proto3";
 package proto.broker;
 
 import "proto/project/project.proto";
+import "proto/templates/shared.proto";
 import "proto/templates/template.proto";
 
 option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/broker";
@@ -13,11 +14,24 @@ message CreateProjectRequest {
 }
 
 message CreateProjectResponse {
-  string name = 1;
-  repeated proto.templates.TemplatesResponse template_responses = 2;
-  string error = 3;
+  string deployment_id = 1;
+  string project_name = 2;
+  proto.templates.Status status = 3;
+  string error = 4;
+}
+
+message GetProjectStatusRequest {
+  string deployment_id = 1;
+}
+
+message GetProjectStatusResponse {
+  string project_name = 1;
+  proto.templates.Status status = 2;
+  repeated proto.templates.TemplatesResponse template_responses = 3;
+  string error = 4;
 }
 
 service BrokerService {
   rpc CreateProject(CreateProjectRequest) returns (CreateProjectResponse);
+  rpc GetProjectStatus(GetProjectStatusRequest) returns (GetProjectStatusResponse);
 }
