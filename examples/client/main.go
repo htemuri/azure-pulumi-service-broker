@@ -66,30 +66,30 @@ func main() {
 				{Name: "default", NumberOfIpAddresses: 48},
 				{Name: "second", NumberOfIpAddresses: 32}}},
 	}
-	// sec := &templates.SecurityRequest{
-	// 	DefaultParams: defaultArgs,
-	// 	KeyVault: &templates.KeyVaultArgs{
-	// 		NetworkSettings: &templates.ResourceNetworkArgs{
-	// 			PrivateEndpoint: &templates.PrivateEndpointArgs{
-	// 				Enabled: false,
-	// 			},
-	// 		},
-	// 	},
-	// }
-	// stor := &templates.StorageRequest{
-	// 	DefaultParams: defaultArgs,
-	// 	StorageAccount: &templates.StorageAccountArgs{
-	// 		HnsEnabled: true,
-	// 		Kind:       templates.StorAcctKind_STOR_ACCT_KIND_STORAGE_V2,
-	// 		Sku:        templates.StorAcctSKU_STOR_ACCT_SKU_STANDARD_LRS,
-	// 		NetworkSettings: &templates.ResourceNetworkArgs{
-	// 			PrivateEndpoint: &templates.PrivateEndpointArgs{
-	// 				Enabled:      false,
-	// 				SubResources: []string{"blob", "dfs"},
-	// 			},
-	// 		},
-	// 	},
-	// }
+	sec := &templates.SecurityRequest{
+		DefaultParams: defaultArgs,
+		KeyVault: &templates.KeyVaultArgs{
+			NetworkSettings: &templates.ResourceNetworkArgs{
+				PrivateEndpoint: &templates.PrivateEndpointArgs{
+					Enabled: false,
+				},
+			},
+		},
+	}
+	stor := &templates.StorageRequest{
+		DefaultParams: defaultArgs,
+		StorageAccount: &templates.StorageAccountArgs{
+			HnsEnabled: true,
+			Kind:       templates.StorAcctKind_STOR_ACCT_KIND_STORAGE_V2,
+			Sku:        templates.StorAcctSKU_STOR_ACCT_SKU_STANDARD_LRS,
+			NetworkSettings: &templates.ResourceNetworkArgs{
+				PrivateEndpoint: &templates.PrivateEndpointArgs{
+					Enabled:      false,
+					SubResources: []string{"blob", "dfs"},
+				},
+			},
+		},
+	}
 
 	reqInput := broker.CreateProjectRequest{
 		Project: &project.Project{
@@ -98,8 +98,8 @@ func main() {
 		},
 		TemplateRequests: []*templates.TemplatesRequest{
 			{Request: &templates.TemplatesRequest_Base{Base: base}},
-			// {Request: &templates.TemplatesRequest_Security{Security: sec}},
-			// {Request: &templates.TemplatesRequest_Storage{Storage: stor}},
+			{Request: &templates.TemplatesRequest_Security{Security: sec}},
+			{Request: &templates.TemplatesRequest_Storage{Storage: stor}},
 		},
 	}
 
@@ -110,8 +110,9 @@ func main() {
 	}
 	logger.Printf("deployment id: %v", res.GetDeploymentId())
 
-	for range 5 {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	for range 10 {
+		time.Sleep(time.Second * 5)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 		defer cancel()
 		stat, err := client.GetProjectStatus(ctx, &broker.GetProjectStatusRequest{
 			DeploymentId: res.GetDeploymentId(),
@@ -128,6 +129,5 @@ func main() {
 			return
 		}
 		logger.Printf("current status: %v", stat.GetStatus())
-		time.Sleep(time.Second * 5)
 	}
 }
