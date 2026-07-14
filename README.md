@@ -20,11 +20,12 @@ Clients send a gRPC request describing a "project" (an environment plus a set of
 ![diagram of azure pulumi service broker](public/diagram.png)
  
  
-1. **`broker-api`** exposes a gRPC service (`BrokerService`) with two RPCs: `CreateProject` and `GetProjectStatus`.
+1. The broker API exposes a gRPC service with two RPCs: `CreateProject` and `GetProjectStatus`.
 2. `CreateProject` generates a `deploymentId`, marshals the request as protobuf, and publishes it to a NATS JetStream stream (`ProjectJobQueue`).
-3. **`pulumi-worker`** consumes jobs off that stream, runs the requested Pulumi programs against Azure, and writes the resulting status/output back to a NATS key-value bucket (`deployments`).
+3. The broker pulumi worker consumes jobs off that stream, runs the requested Pulumi programs against Azure, and writes the resulting status/output back to a NATS key-value bucket (`deployments`).
 4. `GetProjectStatus` reads that KV store so clients can poll a `deploymentId` until it's `SUCCESS` or `ERROR`.
-All the API contracts live in `proto/` and are compiled to Go with `buf`/`protoc` (see the `proto` recipe in the `Justfile`).
+
+All the API contracts live in `proto/` and are compiled to Go with `protoc` (see the `proto` recipe in the `Justfile`).
  
 ## Templates
  
@@ -63,7 +64,7 @@ go run cmd/api/*.go # for the api
 go run cmd/pulumi_worker/*.go # for the pulumi workers
 ```
  
-The broker API listens on `:50051`.
+The broker API listens on `:50051` by default.
  
 ## Example client
  
@@ -90,7 +91,7 @@ examples/client/     sample gRPC client
   - [ ] nats authentication and tls
   - [ ] maybe a helm chart to deploy the entire stack to k8s
   - [ ] attaching telemetry to the bundle
-  - [x] different "templates" for how projects are structured? like make project top level into resource groups instead of subscriptions
+  - [ ] different "templates" for how projects are structured? like make project top level into resource groups instead of subscriptions
   - [ ] rollback feature?
   - [ ] option to export stack to files that can be pushed to a repo that keep it in sync
     - [ ] option to choose format of export [eg: terraform hcl, pulumi stack, arm, json, yaml?]
