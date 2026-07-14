@@ -17,7 +17,7 @@ Clients send a gRPC request describing a "project" (an environment plus a set of
 
 ## Demo
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/xstuxZrgMb0?si=YQ_xx2thy0v4azi1" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+[![Demo video](https://img.youtube.com/vi/xstuxZrgMb0/maxresdefault.jpg)](https://youtu.be/xstuxZrgMb0)
  
 ## How it works
 
