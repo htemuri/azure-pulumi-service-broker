@@ -6,7 +6,7 @@ import "proto/templates/shared.proto";
 
 option go_package = "github.com/htemuri/azure-pulumi-service-broker/pkg/templates";
 
-// Stack creating/selecting subscription and networking
+// stack creating/selecting subscription and networking
 message Base {
   string stack_name = 1;
   repeated ProviderVersion provider_versions = 2;

@@ -41,6 +41,8 @@ func main() {
 	projectName := "covid"
 	env := templates.Environment_ENVIRONMENT_PRD
 	reg := templates.Region_REGION_EASTUS
+	// this should be a service principal with a role like owner on either the existing subscription you use or the management group you use (if creating new subscriptions).
+	// it should also have graph api application permissions if you want to add an 'entraid' template for creating/updating groups and service principals
 	pulumiCred := &templates.PulumiProviderCredentialArgs{
 		TenantId:     os.Getenv("TENANT_ID"),
 		ClientId:     os.Getenv("PULUMI_SP_CLIENT_ID"),
@@ -55,7 +57,7 @@ func main() {
 	base := &templates.BaseRequest{
 		DefaultParams: defaultArgs,
 		Subscription: &templates.SubscriptionArgs{
-			SubscriptionId: os.Getenv("TEST_SUBSCRIPTION_ID"),
+			SubscriptionId: os.Getenv("TEST_SUBSCRIPTION_ID"), // use billingScope and managementGroupId if you want to create a new subscription
 			// BillingScope:      os.Getenv("BILLING_SCOPE"),
 			// ManagementGroupId: os.Getenv("CLIENT_PROJ_MGMT_GROUP_ID"),
 		},
@@ -112,6 +114,7 @@ func main() {
 	}
 	logger.Printf("deployment id: %v", res.GetDeploymentId())
 
+	// this just polls the broker grpc server for updates on the project deployment request
 	for range 45 { // check status for 7.5 minutes
 		time.Sleep(time.Second * 10) // every 10 seconds
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)

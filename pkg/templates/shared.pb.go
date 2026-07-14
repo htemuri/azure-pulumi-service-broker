@@ -234,7 +234,7 @@ type DefaultParams struct {
 	ProjectName              string                        `protobuf:"bytes,1,opt,name=project_name,json=projectName,proto3" json:"project_name,omitempty"`
 	Environment              Environment                   `protobuf:"varint,2,opt,name=environment,proto3,enum=proto.templates.Environment" json:"environment,omitempty"`
 	Region                   Region                        `protobuf:"varint,3,opt,name=region,proto3,enum=proto.templates.Region" json:"region,omitempty"`                                          // if unspecified, will default to eastus
-	PulumiProviderCredential *PulumiProviderCredentialArgs `protobuf:"bytes,4,opt,name=pulumi_provider_credential,json=pulumiProviderCredential,proto3" json:"pulumi_provider_credential,omitempty"` // repeated TemplateOptions depends_on = 8;
+	PulumiProviderCredential *PulumiProviderCredentialArgs `protobuf:"bytes,4,opt,name=pulumi_provider_credential,json=pulumiProviderCredential,proto3" json:"pulumi_provider_credential,omitempty"` // this is the service principal used to execute the deployment in Azure
 	unknownFields            protoimpl.UnknownFields
 	sizeCache                protoimpl.SizeCache
 }
@@ -463,9 +463,9 @@ func (x *ResourceNetworkArgs) GetPrivateEndpoint() *PrivateEndpointArgs {
 
 type PrivateEndpointArgs struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Enabled       bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`                        // default disabled
-	SubnetId      *string                `protobuf:"bytes,2,opt,name=subnet_id,json=subnetId,proto3,oneof" json:"subnet_id,omitempty"` // if not specified, then use default subnet id from base network vnet
-	SubResources  []string               `protobuf:"bytes,3,rep,name=sub_resources,json=subResources,proto3" json:"sub_resources,omitempty"`
+	Enabled       bool                   `protobuf:"varint,1,opt,name=enabled,proto3" json:"enabled,omitempty"`                              // default disabled
+	SubnetId      *string                `protobuf:"bytes,2,opt,name=subnet_id,json=subnetId,proto3,oneof" json:"subnet_id,omitempty"`       // if not specified, then use default subnet id from base network vnet
+	SubResources  []string               `protobuf:"bytes,3,rep,name=sub_resources,json=subResources,proto3" json:"sub_resources,omitempty"` // for ex: `vault` for keyvault; `blob`, `dfs`, `queue`, `file`, `table` for storage accounts
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }

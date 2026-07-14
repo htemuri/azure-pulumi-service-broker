@@ -36,8 +36,7 @@ message DefaultParams {
   string project_name = 1;
   Environment environment = 2;
   Region region = 3; // if unspecified, will default to eastus
-  PulumiProviderCredentialArgs pulumi_provider_credential = 4;
-  // repeated TemplateOptions depends_on = 8;
+  PulumiProviderCredentialArgs pulumi_provider_credential = 4; // this is the service principal used to execute the deployment in Azure
 }
 
 message PulumiProviderCredentialArgs {
@@ -59,7 +58,7 @@ message ResourceNetworkArgs {
 message PrivateEndpointArgs {
   bool enabled = 1; // default disabled
   optional string subnet_id = 2; // if not specified, then use default subnet id from base network vnet
-  repeated string sub_resources = 3;
+  repeated string sub_resources = 3; // for ex: `vault` for keyvault; `blob`, `dfs`, `queue`, `file`, `table` for storage accounts
 }
 
 message PrivateEndpointResponse {

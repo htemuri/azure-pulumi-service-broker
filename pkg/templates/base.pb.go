@@ -21,7 +21,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Stack creating/selecting subscription and networking
+// stack creating/selecting subscription and networking
 type Base struct {
 	state            protoimpl.MessageState `protogen:"open.v1"`
 	StackName        string                 `protobuf:"bytes,1,opt,name=stack_name,json=stackName,proto3" json:"stack_name,omitempty"`
