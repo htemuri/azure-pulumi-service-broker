@@ -1,7 +1,7 @@
 > [!NOTE]
 > **AI Disclaimer**
 > 
-> As it's project meant for learning, this repo does not contain any AI generated code[^1] nor was the architecture ideated using AI. The documentation and write-up is, however, written with the assistance of an LLM. 
+> As it's project meant for learning, this repo does not contain any AI generated code[^1] nor was the architecture ideated using AI. The documentation and write-up, however, is written with the assistance of an LLM. 
 >
 > My decision to not use AI to assist with programming my pet projects doesn't reflect an anti-ai sentiment for use during company work.
 
@@ -14,6 +14,10 @@ A self-service API to provision Azure infrastructure using Pulumi instead of Ter
 
 
 Clients send a gRPC request describing a "project" (an environment plus a set of resource templates), and the broker asynchronously provisions the corresponding Azure resources via Pulumi's Automation API. It then reports back status and outputs once the deployment finishes.
+
+## Demo
+
+[![Demo video](https://img.youtube.com/vi/xstuxZrgMb0/maxresdefault.jpg)](https://youtu.be/xstuxZrgMb0)
  
 ## How it works
 
