@@ -1,0 +1,43 @@
+services:
+  nats:
+    image: nats:2-alpine
+    container_name: nats-server
+    restart: always
+    expose:
+      - "4222"
+      - "8222"
+      - "9222"
+    volumes:
+      - ./nats.conf:/etc/nats/nats.conf:ro,Z
+      - nats_data:/data
+    command: [ "-c", "/etc/nats/nats.conf" ]
+
+  api:
+    build:
+      context: ../
+      dockerfile: docker/broker_api_Dockerfile
+    restart: always
+    ports:
+      - "50051:50051"
+    container_name: broker-api
+    environment:
+      - NATS_SERVER=nats://nats:4222
+    depends_on:
+      - nats
+
+  pulumi_worker:
+    build:
+      context: ../
+      dockerfile: docker/pulumi_worker_Dockerfile
+    restart: always
+    container_name: pulumi-worker
+    environment:
+      - RUNTIME=docker
+      - PROJECT_STREAM_NAME=ProjectJobQueue
+      - NATS_SERVER=nats://nats:4222
+      - PULUMI_ACCESS_TOKEN=${PULUMI_ACCESS_TOKEN}
+    depends_on:
+      - nats
+
+volumes:
+  nats_data:

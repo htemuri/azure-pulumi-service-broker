@@ -223,6 +223,7 @@ func (b *Base) pulumiRunFunc() pulumi.RunFunc {
 		}
 
 		var subnets []*SubnetArgs
+		var subnetOutput []pulumi.Input
 		if len(virtualNetworkArgs.GetSubnets()) > 0 {
 			subnets = append(subnets, virtualNetworkArgs.GetSubnets()...)
 		} else {
@@ -233,7 +234,7 @@ func (b *Base) pulumiRunFunc() pulumi.RunFunc {
 			})
 		}
 		for _, s := range subnets {
-			_, err := network.NewSubnet(ctx, fmt.Sprintf("subnet-%s", s.GetName()), &network.SubnetArgs{
+			sub, err := network.NewSubnet(ctx, fmt.Sprintf("subnet-%s", s.GetName()), &network.SubnetArgs{
 				Name:               pulumi.String(s.GetName()),
 				VirtualNetworkName: vnet.Name,
 				ResourceGroupName:  networkRg.Name,
@@ -247,11 +248,20 @@ func (b *Base) pulumiRunFunc() pulumi.RunFunc {
 			if err != nil {
 				return err
 			}
+			subExport := pulumi.Map(map[string]pulumi.Input{
+				"Id":   sub.ID(),
+				"Name": sub.Name,
+			})
+			subnetOutput = append(subnetOutput, subExport)
 		}
 
+		var convertedSubnets []any
+		for _, s := range subnetOutput {
+			convertedSubnets = append(convertedSubnets, s)
+		}
 		ctx.Export("subscriptionId", subscriptionId)
 		ctx.Export("vnetId", vnet.ID())
-		ctx.Export("subnets", vnet.Subnets)
+		ctx.Export("subnets", pulumi.ToArray(convertedSubnets))
 		return nil
 	}
 }

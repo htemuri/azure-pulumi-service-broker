@@ -22,9 +22,16 @@ func main() {
 	natsServer := nats.DefaultURL
 	ctx := context.Background()
 
-	err := godotenv.Load()
-	if err != nil {
-		logger.Fatal("error loading .env file:", err)
+	runtime := os.Getenv("RUNTIME")
+	if runtime != "docker" {
+		err := godotenv.Load()
+		if err != nil {
+			logger.Fatal("error loading .env file:", err)
+		}
+	}
+
+	if os.Getenv("NATS_SERVER") != "" {
+		natsServer = os.Getenv("NATS_SERVER")
 	}
 
 	// TODO: Make this better - maybe add defaults as a method of the config class

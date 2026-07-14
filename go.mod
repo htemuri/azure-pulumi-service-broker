@@ -2,6 +2,7 @@ module github.com/htemuri/azure-pulumi-service-broker
 
 go 1.26.3
 
+// replace github.com/htemuri/azure-pulumi-service-broker/pkg => ../../pkg
 require (
 	github.com/dominikbraun/graph v0.23.0
 	github.com/go-viper/mapstructure/v2 v2.5.0
@@ -18,6 +19,10 @@ require (
 	github.com/pulumi/pulumi/sdk/v3 v3.251.0
 	google.golang.org/grpc v1.82.0
 	google.golang.org/protobuf v1.36.11
+	// github.com/htemuri/azure-pulumi-service-broker/pkg/broker v0.0.0-unpublished
+	// github.com/htemuri/azure-pulumi-service-broker/pkg/project v0.0.0-unpublished
+	// github.com/htemuri/azure-pulumi-service-broker/pkg/templates v0.0.0-unpublished
+
 )
 
 require (

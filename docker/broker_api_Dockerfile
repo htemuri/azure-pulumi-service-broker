@@ -1,0 +1,20 @@
+# syntax=docker/dockerfile:1
+# A microservice for deploying template pulumi stacks to Azure
+
+FROM golang:1.26.3
+
+WORKDIR /app
+
+COPY cmd/api ./cmd/api
+
+COPY pkg ./pkg
+
+COPY go.mod go.sum /app/
+
+RUN go mod download
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o /api ./cmd/api/*.go
+
+EXPOSE 50051
+
+CMD ["/api"]

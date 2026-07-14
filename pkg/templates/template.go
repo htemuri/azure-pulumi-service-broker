@@ -56,7 +56,23 @@ func createOrSelectStack(ctx context.Context, t Template, autonamingConfig map[s
 	}
 
 	projectName := fmt.Sprintf("client-project-%s", t.getDefaultParams().GetProjectName())
-	s, err := auto.UpsertStackInlineSource(ctx, t.GetStackName(), projectName, t.pulumiRunFunc())
+
+	// tempDir, err := os.MkdirTemp("", "cli_install")
+	// if err != nil {
+	// 	return auto.Stack{}, fmt.Errorf("failed to create temp dir: %v\n", err)
+	// }
+
+	// fmt.Printf("installing pulumi into %s\n", tempDir)
+	// pulumiCommand, err := auto.InstallPulumiCommand(ctx, &auto.PulumiCommandOptions{
+	// 	Version: semver.MustParse("3.251.0"),
+	// 	Root:    tempDir,
+	// })
+	// if err != nil {
+	// 	return auto.Stack{}, fmt.Errorf("failed to install pulumi command: %v\n", err)
+	// }
+
+	s, err := auto.UpsertStackInlineSource(ctx, t.GetStackName(), projectName, t.pulumiRunFunc()) // auto.Pulumi(pulumiCommand),
+
 	if err != nil {
 		return auto.Stack{}, fmt.Errorf("failed to create/update stack with error: %s", err)
 	}

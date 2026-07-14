@@ -1,0 +1,25 @@
+# syntax=docker/dockerfile:1
+# A microservice for deploying template pulumi stacks to Azure
+
+FROM golang:1.26.3
+
+WORKDIR /app
+
+# Install az cli (workers have to run `az refresh` sometimes)
+RUN curl -fsSL 'https://azurecliprod.blob.core.windows.net/$root/deb_install.sh' | bash
+
+# Install pulumi cli
+RUN curl -fsSL https://get.pulumi.com | bash
+RUN ln -s /root/.pulumi/bin/pulumi /usr/bin/pulumi
+
+COPY cmd/pulumi_worker ./cmd/pulumi_worker
+
+COPY pkg ./pkg
+
+COPY go.mod go.sum /app/
+
+RUN go mod download
+
+RUN CGO_ENABLED=0 GOOS=linux go build -o /pulumi_worker ./cmd/pulumi_worker/*.go
+
+CMD ["/pulumi_worker"]

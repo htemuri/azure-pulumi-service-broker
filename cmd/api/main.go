@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/htemuri/azure-pulumi-service-broker/pkg/broker"
-	"github.com/joho/godotenv"
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
 	"google.golang.org/grpc"
@@ -17,11 +16,10 @@ import (
 func main() {
 	logger := log.New(os.Stdout, "[Broker API]: ", log.Ldate|log.Ltime|log.Lmsgprefix)
 	natsServer := nats.DefaultURL
-	ctx := context.Background()
-	err := godotenv.Load()
-	if err != nil {
-		logger.Fatal("error loading .env file:", err)
+	if os.Getenv("NATS_SERVER") != "" {
+		natsServer = os.Getenv("NATS_SERVER")
 	}
+	ctx := context.Background()
 
 	logger.Println("initializing connection to nats server: ", natsServer)
 	nc, err := nats.Connect(natsServer)
@@ -37,7 +35,7 @@ func main() {
 	}
 	logger.Println("upgraded connection to jetstream")
 
-	_, err = js.UpdateStream(ctx, jetstream.StreamConfig{Name: "ProjectJobQueue", Description: "Stream to manage active jobs for projects", Subjects: []string{"create.*", "update.*", "delete.*"}})
+	_, err = js.CreateOrUpdateStream(ctx, jetstream.StreamConfig{Name: "ProjectJobQueue", Description: "Stream to manage active jobs for projects", Subjects: []string{"create.*", "update.*", "delete.*"}})
 	if err != nil {
 		logger.Fatal("failed to create 'ProjectJobQueue' stream with error: ", err)
 	}
