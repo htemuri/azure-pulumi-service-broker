@@ -17,7 +17,7 @@ Clients send a gRPC request describing a "project" (an environment plus a set of
  
 ## How it works
 
-![diagram of azure pulumi service broker](diagram.png)
+![diagram of azure pulumi service broker](public/diagram.png)
  
  
 1. **`broker-api`** exposes a gRPC service (`BrokerService`) with two RPCs: `CreateProject` and `GetProjectStatus`.
