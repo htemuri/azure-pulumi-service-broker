@@ -1,11 +1,11 @@
 > [!NOTE]
 > **AI Disclaimer**
 > 
-> This repo does not contain any AI generated code[^1] nor was the ideation and architecture thought of using an LLM as it's a project meant for learning. The documentation and write-up is written with the assistance of an LLM. 
+> This repo does not contain any AI generated code[^1] nor was the architecture ideated using AI as it's a project meant for learning. The documentation and write-up is written with the assistance of an LLM. 
 >
-> The choice to not use AI in my pet projects doesn't reflect an anti-ai sentiment for use during company work.
+> My decision to not use AI in my pet projects doesn't reflect an anti-ai sentiment for use during company work.
 
-[^1]: Except for the `unwrapOneof` function [here](https://github.com/htemuri/azure-pulumi-service-broker/blob/d2a7459dee45592ecf3dd7986f28de51d6590c13/pkg/templates/template.go#L43). I couldn't figure out how to properly cast the [`isTemplates_Template` oneOf](https://github.com/htemuri/azure-pulumi-service-broker/blob/d2a7459dee45592ecf3dd7986f28de51d6590c13/pkg/templates/template.pb.go#L32) interface in my generated protobuf code to my custom interface for Template without having to manually write cases for each possible template that implemented `isTemplates_Template`.
+[^1]: Except for the `unwrapOneof` function [here](https://github.com/htemuri/azure-pulumi-service-broker/blob/6d9d739ead32ba770da6b086397bc3b27d360539/pkg/templates/template.go#L125). I couldn't figure out how to properly cast the [`isTemplates_Template` oneOf](https://github.com/htemuri/azure-pulumi-service-broker/blob/6d9d739ead32ba770da6b086397bc3b27d360539/pkg/templates/template.pb.go#L31) interface in my generated protobuf code to my custom interface for Template without having to manually write cases for each possible template that implemented `isTemplates_Template`.
 
 # azure-pulumi-service-broker
 A self-service API to provision Azure infrastructure using Pulumi instead of Terraform.
