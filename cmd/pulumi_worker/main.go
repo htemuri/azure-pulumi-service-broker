@@ -142,19 +142,4 @@ func main() {
 
 	// keep waiting for nats messages
 	wg.Wait()
-
-	// ctx := context.Background()
-	// s, err := auto.UpsertRemoteStackGitSource(ctx, "htemuri/test-templating/git-auto", auto.GitRepo{
-	// 	URL:         "https://github.com/pulumi/examples.git",
-	// 	Branch:      "master",
-	// 	ProjectPath: "aws-go-s3-folder",
-	// })
-	// if err != nil {
-	// 	fmt.Println(err.Error())
-	// }
-	// _, err = s.Preview(ctx)
-	// if err != nil {
-	// 	fmt.Println(err.Error())
-	// }
-
 }

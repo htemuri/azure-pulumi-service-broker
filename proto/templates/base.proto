@@ -40,7 +40,7 @@ message NetworkArgs {
 
 message SubnetArgs {
   string name = 1;
-  int32 number_of_ip_addresses = 2;
+  int32 number_of_ip_addresses = 2; // actual deployed ips is the closest next power of 2 from 'number_of_up_addresses'. (eg: 160 -> 256)
 }
 
 message SubnetResponse {
@@ -51,5 +51,5 @@ message SubnetResponse {
 
 message IpamPoolPrefixAllocation {
   string ipam_pool_resource_id = 1;
-  int32 number_of_ip_addresses = 2;
+  int32 number_of_ip_addresses = 2; // actual deployed ips is the closest next power of 2 from 'number_of_up_addresses'. (eg: 160 -> 256)
 }

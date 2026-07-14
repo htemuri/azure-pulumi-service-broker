@@ -55,7 +55,7 @@ func main() {
 	base := &templates.BaseRequest{
 		DefaultParams: defaultArgs,
 		Subscription: &templates.SubscriptionArgs{
-			SubscriptionId: "23b1b9f5-6b57-4c00-87d7-7b49d4d88c6c",
+			SubscriptionId: os.Getenv("TEST_SUBSCRIPTION_ID"),
 			// BillingScope:      os.Getenv("BILLING_SCOPE"),
 			// ManagementGroupId: os.Getenv("CLIENT_PROJ_MGMT_GROUP_ID"),
 		},

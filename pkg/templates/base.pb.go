@@ -333,7 +333,7 @@ func (x *NetworkArgs) GetSubnets() []*SubnetArgs {
 type SubnetArgs struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	Name                string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	NumberOfIpAddresses int32                  `protobuf:"varint,2,opt,name=number_of_ip_addresses,json=numberOfIpAddresses,proto3" json:"number_of_ip_addresses,omitempty"`
+	NumberOfIpAddresses int32                  `protobuf:"varint,2,opt,name=number_of_ip_addresses,json=numberOfIpAddresses,proto3" json:"number_of_ip_addresses,omitempty"` // actual deployed ips is the closest next power of 2 from 'number_of_up_addresses'. (eg: 160 -> 256)
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
@@ -445,7 +445,7 @@ func (x *SubnetResponse) GetIpsLeft() int32 {
 type IpamPoolPrefixAllocation struct {
 	state               protoimpl.MessageState `protogen:"open.v1"`
 	IpamPoolResourceId  string                 `protobuf:"bytes,1,opt,name=ipam_pool_resource_id,json=ipamPoolResourceId,proto3" json:"ipam_pool_resource_id,omitempty"`
-	NumberOfIpAddresses int32                  `protobuf:"varint,2,opt,name=number_of_ip_addresses,json=numberOfIpAddresses,proto3" json:"number_of_ip_addresses,omitempty"`
+	NumberOfIpAddresses int32                  `protobuf:"varint,2,opt,name=number_of_ip_addresses,json=numberOfIpAddresses,proto3" json:"number_of_ip_addresses,omitempty"` // actual deployed ips is the closest next power of 2 from 'number_of_up_addresses'. (eg: 160 -> 256)
 	unknownFields       protoimpl.UnknownFields
 	sizeCache           protoimpl.SizeCache
 }
