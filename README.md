@@ -1,7 +1,7 @@
 > [!NOTE]
 > **AI Disclaimer**
 > 
-> As it's project meant for learning, this repo does not contain any AI generated code[^1] nor was the architecture ideated using AI. The documentation and write-up, however, is written with the assistance of an LLM. 
+> As it's project meant for learning, this repo does not contain any AI generated code[^1] nor was the architecture ideated using AI. The documentation and write-up, however, are written with the assistance of an LLM. 
 >
 > My decision to not use AI to assist with programming my pet projects doesn't reflect an anti-ai sentiment for use during company work.
 
